@@ -4,7 +4,7 @@ import pandas as pd
 # DATA PRE-PROCESSING CODE -----------------------------------------------------
 
 # Load csv to pandas dataframe
-CFMS_df = pd.read_csv('/workspaces/Lorna_0.1/data/CashFlow Momentum Score- CMS-S&P 500 - Cash Flow Momentum Score (CMS)-S&P 500.csv',header=1)
+CFMS_df = pd.read_csv('data/CashFlow Momentum Score- CMS-S&P 500 - Cash Flow Momentum Score (CMS)-S&P 500.csv', header=1)
 # generate list of column names that are corresponding to the years
 year_columns = [x for x in CFMS_df.columns if x.isnumeric()]
 for col in year_columns:
