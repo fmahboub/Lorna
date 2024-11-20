@@ -1,9 +1,12 @@
 import streamlit as st
 import pandas as pd
+import plotly.express as px
+import altair as alt
 
-# DATA PRE-PROCESSING CODE -----------------------------------------------------
 
-# Load csv to pandas dataframe
+# DATA PRE-PROCESSING CODE --------------------------------------------------------------------
+
+# Load MAIN TABLE TO CSV
 CFMS_df = pd.read_csv('data/CashFlow Momentum Score- CMS-S&P 500 - Cash Flow Momentum Score (CMS)-S&P 500.csv', header=1)
 # generate list of column names that are corresponding to the years
 year_columns = [x for x in CFMS_df.columns if x.isnumeric()]
@@ -12,27 +15,87 @@ for col in year_columns:
 # Create list of company names for using in drop-down menu
 company_name_list = list(CFMS_df['Company Name'])
 main_table_display_columns = [x for x in CFMS_df.columns if x not in year_columns]
+main_table_display_columns.remove('Index Weight')
 
-# APP CODE
+CCE_df = pd.read_csv('data/components/CashFlow Momentum Score- CMS-S&P 500 - Cash Conversion Efficency Normalized Score.csv', header=1)
+EBITDA_df = pd.read_csv('data/components/CashFlow Momentum Score- CMS-S&P 500 - EBITDA Margin Normalized Score.csv', header=1)
+FCF_df = pd.read_csv('data/components/CashFlow Momentum Score- CMS-S&P 500 - FCF Yield Normalized Score.csv', header=1)
+OCFG_df = pd.read_csv('data/components/CashFlow Momentum Score- CMS-S&P 500 - Operating Cash Flow Growth Normalized Score.csv', header=1)
+ROIC_df = pd.read_csv('data/components/CashFlow Momentum Score- CMS-S&P 500 - Return on Invested Capital Normalized Score.csv', header=1)
+comp_table_names = ['CCE_df','EBITDA_df','FCF_df','OCFG_df','ROIC_df']
+
+# APP CODE ------------------------------------------------------------------------------------
 st.set_page_config(layout="wide")
 
 # Create a navigation menu at the top
 menu = st.radio(
     "Navigate to:",
-    ("Home", "About"),
+    ("Home", "Rankings", "About"),
     horizontal=True,  # This makes the radio buttons horizontal
 )
 
-# Display different pages based on selection
+# DISPLAY DIFFERENT PAGES BASED ON SELECTION
 if menu == "Home":
+
     st.title("LORNA")
     st.write(
         "Compare Companies Using Cash Flow Momentum Score (CFMS)"
     )
-    # Dropdown for preloaded companies
+    # CREATES DROPDOWN MENU FOR SELECTING COMPANIES
     selected_companies = st.multiselect("Select Companies to Compare", company_name_list, default=company_name_list[:3])
+    # ONLY DISPLAY ANYTHING IF THE SELECTION HAS AT LEAST 1 COMPANY
     if len(selected_companies) > 0:
-        st.table(CFMS_df.loc[CFMS_df['Company Name'].isin(selected_companies)][main_table_display_columns])
+        temp_table = CFMS_df.loc[CFMS_df['Company Name'].isin(selected_companies)][main_table_display_columns]
+        temp_table[main_table_display_columns[2:]] = temp_table[main_table_display_columns[2:]].fillna(0).astype(int)
+        st.table(temp_table.reset_index(drop=True))
+        # Create a bar chart from the 'Values' column
+        chart_option = st.radio("Choose metric to display:",('TTM', 'Latest Fiscal Year', 'Latest Qtr'),horizontal =True)
+        # Create the bar chart
+        # Create the chart with a custom y-axis range
+        chart = alt.Chart(temp_table).mark_bar().encode(
+            x=alt.X('Company Name',axis=alt.Axis(labelAngle=0)),
+            y=alt.Y(chart_option, scale=alt.Scale(domain=[0, max(temp_table[chart_option])+5]), title='CFMS  '+chart_option))
+        st.altair_chart(chart, use_container_width=True)
+    # CREATE TEMP TABLE OF COMPONENTS FOR DISPLAY
+    temp_comps_table = temp_table[main_table_display_columns[:2]].reset_index(drop=True)
+    for table_name in comp_table_names:
+        temp_comp_table = globals()[table_name]
+        temp_comp_table = temp_comp_table.loc[temp_comp_table['Company Name'].isin(selected_companies)]
+        temp_comp_table = temp_comp_table[main_table_display_columns[:2]+[chart_option]].rename(columns={chart_option:table_name[:-3]+' '+chart_option}).reset_index(drop=True)
+        temp_comps_table = pd.merge(temp_comps_table, temp_comp_table, how='outer', on=['Company Name', 'Stock Symbol'])
+    temp_comps_table[temp_comps_table.columns[2:]] = temp_comps_table[temp_comps_table.columns[2:]].fillna(0).astype(int)
+    # Melt the dataframe to get it into the right format for Altair
+    df_melted = temp_comps_table.melt(
+        id_vars=['Company Name', 'Stock Symbol'],
+        value_vars=temp_comps_table.columns[2:],
+        var_name='Metric',
+        value_name='Value'
+    )
+
+    # Create the Altair chart with dodged (side-by-side) bars
+    chart = alt.Chart(df_melted).mark_bar().encode(
+        x=alt.X('Company Name:N', title='Company',axis=alt.Axis(labelAngle=0)),
+        y=alt.Y('Value:Q', title='Normalized  Value'),
+        color='Metric:N',
+        xOffset='Metric:N',  # This creates the side-by-side effect
+        tooltip=['Company Name', 'Stock Symbol', 'Metric', 'Value'])
+
+    # Display the chart in Streamlit
+    st.altair_chart(chart, use_container_width=True)
+
+elif menu == "Rankings":
+    st.title("Rankings")
+    # CHANGE THE COLUMN NAMES SO THAT THEY ARE MORE EXPLICIT
+    chart_option_mapping = {'Index Weight':'S&P 500 Index Weight','TTM':'CFMS TTM','Latest Fiscal Year':'CFMS LFY'}
+    ranking_table = CFMS_df.rename(columns = chart_option_mapping)
+    # REMOVE THE COLUMNS FOR EACH YEAR CFMS
+    ranking_table = ranking_table.loc[:,:'4 QTR Ago']
+    ranking_table.insert(1,'Stock Symbol',ranking_table.pop('Stock Symbol'))
+    numeric_cols = ranking_table.columns[3:]
+    ranking_table[numeric_cols] = ranking_table[numeric_cols].apply(pd.to_numeric, errors='coerce')
+    ranking_table = ranking_table.dropna(subset=['Company Name','Stock Symbol'])
+    st.dataframe(ranking_table, use_container_width=True)
+
 elif menu == "About":
     st.title("About This App")
     st.write("""
