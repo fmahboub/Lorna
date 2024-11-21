@@ -28,11 +28,9 @@ comp_table_names = ['CCE_df','EBITDA_df','FCF_df','OCFG_df','ROIC_df']
 st.set_page_config(layout="wide")
 
 # Create a navigation menu at the top
-menu = st.radio(
-    "Navigate to:",
+menu = st.radio("Navigate to:",
     ("Home", "Rankings", "About"),
-    horizontal=True,  # This makes the radio buttons horizontal
-)
+    horizontal=True)  # This makes the radio buttons horizontal
 
 # DISPLAY DIFFERENT PAGES BASED ON SELECTION
 if menu == "Home":
@@ -45,15 +43,19 @@ if menu == "Home":
     selected_companies = st.multiselect("Select Companies to Compare", company_name_list, default=company_name_list[:3])
     # ONLY DISPLAY ANYTHING IF THE SELECTION HAS AT LEAST 1 COMPANY
     if len(selected_companies) > 0:
-        temp_table = CFMS_df.loc[CFMS_df['Company Name'].isin(selected_companies)][main_table_display_columns]
+        temp_table = CFMS_df.loc[CFMS_df['Company Name'].isin(selected_companies)]
+        # MAKE A COPY FOR TIMELINE VISUAL
+        temp_timeline_table = temp_table.copy()
+        temp_timeline_table = temp_timeline_table[['Company Name']+[x for x in temp_timeline_table.columns if x not in main_table_display_columns]].drop(columns='Index Weight')
+        # FILTER temp_table TO ONLY CONTAIN APPROPRIATE COLUMNS
+        temp_table = temp_table[main_table_display_columns]
         temp_table[main_table_display_columns[2:]] = temp_table[main_table_display_columns[2:]].fillna(0).astype(int)
         st.table(temp_table.reset_index(drop=True))
         # Create a bar chart from the 'Values' column
         chart_option = st.radio("Choose metric to display:",('TTM', 'Latest Fiscal Year', 'Latest Qtr'),horizontal =True)
-        # Create the bar chart
-        # Create the chart with a custom y-axis range
+        # CREATE BAR CHART WITH CUSTOM Y-AXIS RANGE
         chart = alt.Chart(temp_table).mark_bar().encode(
-            x=alt.X('Company Name',axis=alt.Axis(labelAngle=0)),
+            x=alt.X('Company Name',title='Company',axis=alt.Axis(labelAngle=0)),
             y=alt.Y(chart_option, scale=alt.Scale(domain=[0, max(temp_table[chart_option])+5]), title='CFMS  '+chart_option))
         st.altair_chart(chart, use_container_width=True)
     # CREATE TEMP TABLE OF COMPONENTS FOR DISPLAY
@@ -64,15 +66,14 @@ if menu == "Home":
         temp_comp_table = temp_comp_table[main_table_display_columns[:2]+[chart_option]].rename(columns={chart_option:table_name[:-3]+' '+chart_option}).reset_index(drop=True)
         temp_comps_table = pd.merge(temp_comps_table, temp_comp_table, how='outer', on=['Company Name', 'Stock Symbol'])
     temp_comps_table[temp_comps_table.columns[2:]] = temp_comps_table[temp_comps_table.columns[2:]].fillna(0).astype(int)
-    # Melt the dataframe to get it into the right format for Altair
+    # MELT THE DATAFRAME TO GET IT INTO THE RIGHT FORMAT FOR ALTAIR
     df_melted = temp_comps_table.melt(
         id_vars=['Company Name', 'Stock Symbol'],
         value_vars=temp_comps_table.columns[2:],
         var_name='Metric',
-        value_name='Value'
-    )
+        value_name='Value')
 
-    # Create the Altair chart with dodged (side-by-side) bars
+    # CREATE ALTAIR CHART WITH DODGED (side-by-side) BARS FOR EACH COMPONENT
     chart = alt.Chart(df_melted).mark_bar().encode(
         x=alt.X('Company Name:N', title='Company',axis=alt.Axis(labelAngle=0)),
         y=alt.Y('Value:Q', title='Normalized  Value'),
@@ -82,6 +83,20 @@ if menu == "Home":
 
     # Display the chart in Streamlit
     st.altair_chart(chart, use_container_width=True)
+    # PIVOT TIMELINE TABLE TO LONG FORMAT
+    temp_timeline_table_long = temp_timeline_table.melt(id_vars=["Company Name"], var_name="Year", value_name="CFMS")
+    # CREATE THE LINE CHART
+    line_chart = (
+        alt.Chart(temp_timeline_table_long)
+        .mark_line()
+        .encode(
+            x=alt.X("Year:O", title="Year"),
+            y=alt.Y("CFMS:Q", title="CFMS"),
+            color="Company Name:N",
+            tooltip=["Company Name", "Year", "CFMS"],
+        ).interactive())
+    # DISPLAY THE CHART IN STREAMLIT
+    st.altair_chart(line_chart, use_container_width=True)
 
 elif menu == "Rankings":
     st.title("Rankings")
