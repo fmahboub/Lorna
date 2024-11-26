@@ -1,1 +1,5 @@
 streamlit
+gspread
+google.oauth2.service_account 
+datetime
+pytz
