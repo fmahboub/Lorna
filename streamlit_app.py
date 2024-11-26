@@ -1,41 +1,107 @@
 import streamlit as st
 import pandas as pd
-# import plotly.express as px
+import gspread
+from google.oauth2.service_account import Credentials
+import numpy as np
+import datetime
+import pytz
 import altair as alt
 
 
-# DATA PRE-PROCESSING CODE --------------------------------------------------------------------
+# DATA LOADING SAVING AND PRE-PROCESSING CODE --------------------------------------------------------------------
 
-# Load MAIN TABLE TO CSV
-CFMS_df = pd.read_csv('data/CashFlow Momentum Score- CMS-S&P 500 - Cash Flow Momentum Score (CMS)-S&P 500.csv', header=1)
-# generate list of column names that are corresponding to the years
+# LOAD TIME STAMP TO CHECK IF WE NEED AN API CALL
+file_name = "data/data_timestamp.txt"
+# Open the file in read mode
+with open(file_name, "r") as file:
+    last_timestamp = file.read()
+last_timestamp_date = last_timestamp.split('_')[0]
+last_timestamp_time= last_timestamp.split('_')[1]
+
+est = pytz.timezone("US/Eastern")
+current_timestamp = datetime.datetime.now(est).strftime("%Y-%m-%d_%H-%M-%S")
+current_timestamp_date = current_timestamp.split('_')[0]
+current_timestamp_time= current_timestamp.split('_')[1]
+
+# COMPARE DATES OF PREVIOUS AND CURRENT TIMESTAMPS AND CALL API IF THE DATE HAS INCREASED AND IT'S PASSED 12 NOON 
+if current_timestamp_date > last_timestamp_date and current_timestamp_time.split('-')[0]>'12':
+    try:
+        # AUTHENTICATE WITH GOOGLE SHEETS
+        gc = gspread.service_account(filename='Google Cloud/blissful-flame-442915-s2-7a643e50638f.json')
+    except:
+        # Load credentials from Streamlit secrets
+        credentials_json = st.secrets["google_cloud"]["credentials"]
+        credentials_dict = json.loads(credentials_json)
+
+        # Authenticate using the credentials
+        scopes = ["https://www.googleapis.com/auth/spreadsheets", "https://www.googleapis.com/auth/drive"]
+        credentials = Credentials.from_service_account_info(credentials_dict, scopes=scopes)
+
+        # Connect to Google Sheets
+        gc = gspread.authorize(credentials)
+    # OPEN THE MAIN SHEET
+    CFMS_spreadsheet = gc.open("CashFlow Momentum Score (CFMS)- US & Canada Stocks")
+    CFMS_df = pd.DataFrame(CFMS_spreadsheet.worksheet("CashFlow Momentum Score -US & Canada Stocks").get_all_records()).replace({'None': np.nan})
+    # DROP COMPANY NAME DUPLICATES
+    CFMS_df = CFMS_df.drop_duplicates(subset='Company Name').reset_index(drop=True)
+
+    # LOAD COMPONENT TABLES
+    CCE_df = pd.DataFrame(CFMS_spreadsheet.worksheet("Cash Flow Efficiency Normalized Score").get_all_records())\
+                                                            .replace({'None': np.nan}).replace({'': np.nan}).drop_duplicates(subset='Company Name').reset_index(drop=True)
+    EBITDA_df = pd.DataFrame(CFMS_spreadsheet.worksheet("EBITDA Margin Normalized Score").get_all_records())\
+                                                            .replace({'None': np.nan}).replace({'': np.nan}).drop_duplicates(subset='Company Name').reset_index(drop=True)
+    FCF_df = pd.DataFrame(CFMS_spreadsheet.worksheet("FCF Yield Normalized Score").get_all_records())\
+                                                            .replace({'None': np.nan}).replace({'': np.nan}).drop_duplicates(subset='Company Name').reset_index(drop=True)
+    OCFG_df = pd.DataFrame(CFMS_spreadsheet.worksheet("Operating Cash Flow Growth Normalized Score").get_all_records())\
+                                                            .replace({'None': np.nan}).replace({'': np.nan}).drop_duplicates(subset='Company Name').reset_index(drop=True)
+    ROIC_df = pd.DataFrame(CFMS_spreadsheet.worksheet("ROIC Score").get_all_records())\
+                                                            .replace({'None': np.nan}).replace({'': np.nan}).drop_duplicates(subset='Company Name').reset_index(drop=True)
+
+    CFMS_df.to_csv('data/CashFlow Momentum Score -US & Canada Stocks.csv',index=False)
+    CCE_df.to_csv('data/components/Cash Flow Efficiency Normalized Score.csv',index=False)
+    EBITDA_df.to_csv('data/components/EBITDA Margin Normalized Score.csv',index=False)
+    FCF_df.to_csv('data/components/FCF Yield Normalized Score.csv',index=False)
+    OCFG_df.to_csv('data/components/Operating Cash Flow Growth Normalized Score.csv',index=False)
+    ROIC_df.to_csv('data/components/ROIC Score.csv',index=False)
+
+    # GET THE TIMESTAMP OF CURRENT TIME AND DATE TO TRACK LAST DATA SAVE
+    # SAVE CURRENT TIMESTAMP IN DATA DIRECTORY
+    file_name = "data/data_timestamp.txt"
+    # Save the file
+    with open(file_name, "w") as file:
+        file.write(current_timestamp)
+else:
+    CFMS_df = pd.read_csv('data/CashFlow Momentum Score -US & Canada Stocks.csv')
+    CCE_df = pd.read_csv('data/components/Cash Flow Efficiency Normalized Score.csv')
+    EBITDA_df = pd.read_csv('data/components/EBITDA Margin Normalized Score.csv')
+    FCF_df = pd.read_csv('data/components/FCF Yield Normalized Score.csv')
+    OCFG_df = pd.read_csv('data/components/Operating Cash Flow Growth Normalized Score.csv')
+    ROIC_df = pd.read_csv('data/components/ROIC Score.csv')
+
+# GENERATE LIST OF COLUMN NAMES THAT ARE CORRESPONDING TO THE YEARS
 year_columns = [x for x in CFMS_df.columns if x.isnumeric()]
-for col in year_columns:
-    CFMS_df[col] = CFMS_df[col].apply(lambda x: round(x) if not pd.isna(x) else x)
-# Create list of company names for using in drop-down menu
+non_score_columns = list(CFMS_df.columns)[:list(CFMS_df.columns).index('Stock Symbol')+1]
+score_columns = [x for x in CFMS_df.columns if x not in non_score_columns]
+CFMS_df[score_columns] = CFMS_df[score_columns].astype(pd.Int64Dtype())
+# CREATE LIST OF COMPANY NAMES FOR USING IN DROP-DOWN MENU
 company_name_list = list(CFMS_df['Company Name'])
 main_table_display_columns = [x for x in CFMS_df.columns if x not in year_columns]
-main_table_display_columns.remove('Index Weight')
-
-CCE_df = pd.read_csv('data/components/CashFlow Momentum Score- CMS-S&P 500 - Cash Conversion Efficency Normalized Score.csv', header=1)
-EBITDA_df = pd.read_csv('data/components/CashFlow Momentum Score- CMS-S&P 500 - EBITDA Margin Normalized Score.csv', header=1)
-FCF_df = pd.read_csv('data/components/CashFlow Momentum Score- CMS-S&P 500 - FCF Yield Normalized Score.csv', header=1)
-OCFG_df = pd.read_csv('data/components/CashFlow Momentum Score- CMS-S&P 500 - Operating Cash Flow Growth Normalized Score.csv', header=1)
-ROIC_df = pd.read_csv('data/components/CashFlow Momentum Score- CMS-S&P 500 - Return on Invested Capital Normalized Score.csv', header=1)
 comp_table_names = ['CCE_df','EBITDA_df','FCF_df','OCFG_df','ROIC_df']
+# CONVERT SCORE COLUMNS TO INTS FOR EACH TABLE ABOVE
+for table_name in comp_table_names:
+    globals()[table_name][score_columns] = globals()[table_name][score_columns].astype(pd.Int64Dtype())
 
 # APP CODE ------------------------------------------------------------------------------------
 st.set_page_config(layout="wide")
 
-# Create a navigation menu at the top
+# CREATE A NAVIGATION MENU AT THE TOP
 menu = st.radio("Navigate to:",
     ("Home", "Rankings", "About"),
     horizontal=True)  # This makes the radio buttons horizontal
-
+# DISPLAY THE LOGO
+st.image('images/Lorna Logo.png',width=120)
 # DISPLAY DIFFERENT PAGES BASED ON SELECTION
 if menu == "Home":
-
-    st.title("LORNA")
     st.write(
         "Compare Companies Using Cash Flow Momentum Score (CFMS)"
     )
@@ -46,70 +112,83 @@ if menu == "Home":
         temp_table = CFMS_df.loc[CFMS_df['Company Name'].isin(selected_companies)]
         # MAKE A COPY FOR TIMELINE VISUAL
         temp_timeline_table = temp_table.copy()
-        temp_timeline_table = temp_timeline_table[['Company Name']+[x for x in temp_timeline_table.columns if x not in main_table_display_columns]].drop(columns='Index Weight')
+        temp_timeline_table = temp_timeline_table[['Company Name']+[x for x in temp_timeline_table.columns if x in year_columns]]
         # FILTER temp_table TO ONLY CONTAIN APPROPRIATE COLUMNS
         temp_table = temp_table[main_table_display_columns]
-        temp_table[main_table_display_columns[2:]] = temp_table[main_table_display_columns[2:]].fillna(0).astype(int)
         st.table(temp_table.reset_index(drop=True))
         # Create a bar chart from the 'Values' column
-        chart_option = st.radio("Choose metric to display:",('TTM', 'Latest Fiscal Year', 'Latest Qtr'),horizontal =True)
+        chart_option = st.radio("Choose metric to display:",('Trailing Twelve Months (TTM) CFMS', 'Year-to-Date (YTD) CFMS', 'Latest Reported Quarter CFMS',),horizontal =True)
         # CREATE BAR CHART WITH CUSTOM Y-AXIS RANGE
         chart = alt.Chart(temp_table).mark_bar().encode(
             x=alt.X('Company Name',title='Company',axis=alt.Axis(labelAngle=0)),
             y=alt.Y(chart_option, scale=alt.Scale(domain=[0, max(temp_table[chart_option])+5]), title='CFMS  '+chart_option))
         st.altair_chart(chart, use_container_width=True)
-    # CREATE TEMP TABLE OF COMPONENTS FOR DISPLAY
-    temp_comps_table = temp_table[main_table_display_columns[:2]].reset_index(drop=True)
-    for table_name in comp_table_names:
-        temp_comp_table = globals()[table_name]
-        temp_comp_table = temp_comp_table.loc[temp_comp_table['Company Name'].isin(selected_companies)]
-        temp_comp_table = temp_comp_table[main_table_display_columns[:2]+[chart_option]].rename(columns={chart_option:table_name[:-3]+' '+chart_option}).reset_index(drop=True)
-        temp_comps_table = pd.merge(temp_comps_table, temp_comp_table, how='outer', on=['Company Name', 'Stock Symbol'])
-    temp_comps_table[temp_comps_table.columns[2:]] = temp_comps_table[temp_comps_table.columns[2:]].fillna(0).astype(int)
-    # MELT THE DATAFRAME TO GET IT INTO THE RIGHT FORMAT FOR ALTAIR
-    df_melted = temp_comps_table.melt(
-        id_vars=['Company Name', 'Stock Symbol'],
-        value_vars=temp_comps_table.columns[2:],
-        var_name='Metric',
-        value_name='Value')
 
-    # CREATE ALTAIR CHART WITH DODGED (side-by-side) BARS FOR EACH COMPONENT
-    chart = alt.Chart(df_melted).mark_bar().encode(
-        x=alt.X('Company Name:N', title='Company',axis=alt.Axis(labelAngle=0)),
-        y=alt.Y('Value:Q', title='Normalized  Value'),
-        color='Metric:N',
-        xOffset='Metric:N',  # This creates the side-by-side effect
-        tooltip=['Company Name', 'Stock Symbol', 'Metric', 'Value'])
+        # CREATE TEMP TABLE OF COMPONENTS FOR DISPLAY
+        temp_comps_table = temp_table[non_score_columns].reset_index(drop=True)
+        for table_name in comp_table_names:
+            temp_comp_table = globals()[table_name]
+            temp_comp_table = temp_comp_table.loc[temp_comp_table['Company Name'].isin(selected_companies)]
+            temp_comp_table = temp_comp_table[non_score_columns+[chart_option]].rename(columns={chart_option:table_name[:-3]+' '+chart_option}).reset_index(drop=True)
+            temp_comps_table = pd.merge(temp_comps_table, temp_comp_table, how='outer', on=non_score_columns)
+        temp_comps_table[temp_comps_table.columns[len(non_score_columns):]] = temp_comps_table[temp_comps_table.columns[len(non_score_columns):]].fillna(0).astype(int)
 
-    # Display the chart in Streamlit
-    st.altair_chart(chart, use_container_width=True)
-    # PIVOT TIMELINE TABLE TO LONG FORMAT
-    temp_timeline_table_long = temp_timeline_table.melt(id_vars=["Company Name"], var_name="Year", value_name="CFMS")
-    # CREATE THE LINE CHART
-    line_chart = (
-        alt.Chart(temp_timeline_table_long)
-        .mark_line()
-        .encode(
-            x=alt.X("Year:O", title="Year"),
-            y=alt.Y("CFMS:Q", title="CFMS"),
-            color="Company Name:N",
-            tooltip=["Company Name", "Year", "CFMS"],
-        ).interactive())
-    # DISPLAY THE CHART IN STREAMLIT
-    st.altair_chart(line_chart, use_container_width=True)
+        # MELT THE DATAFRAME TO GET IT INTO THE RIGHT FORMAT FOR ALTAIR
+        df_melted = temp_comps_table.melt(
+            id_vars=['Company Name', 'Stock Symbol'],
+            value_vars=temp_comps_table.columns[len(non_score_columns):],
+            var_name='Metric',
+            value_name='Value')
+
+        # CREATE ALTAIR CHART WITH DODGED (side-by-side) BARS FOR EACH COMPONENT
+        comp_bar_chart = alt.Chart(df_melted).mark_bar().encode(
+            x=alt.X('Company Name:N', title='Company',axis=alt.Axis(labelAngle=0)),
+            y=alt.Y('Value:Q', title='Normalized  Value'),
+            color='Metric:N',
+            xOffset='Metric:N',  # This creates the side-by-side effect
+            tooltip=['Company Name', 'Stock Symbol', 'Metric', 'Value'])
+
+        # SET LEGEND ORIENTATION TO TOP
+        comp_bar_chart = comp_bar_chart.configure_legend(orient='top', labelLimit=300)
+        # DISPLAY THE CHART IN STREAMLIT
+        st.altair_chart(comp_bar_chart, use_container_width=True)
+
+        # PIVOT TIMELINE TABLE TO LONG FORMAT
+        temp_timeline_table_long = temp_timeline_table.melt(id_vars=["Company Name"], var_name="Year", value_name="CFMS")
+        # CREATE THE LINE CHART
+        line_chart = (
+            alt.Chart(temp_timeline_table_long)
+            .mark_line()
+            .encode(
+                x=alt.X("Year:O", title="Year"),
+                y=alt.Y("CFMS:Q", title="CFMS", scale=alt.Scale(domain=[round(temp_timeline_table_long.CFMS.min()-temp_timeline_table_long.CFMS.min()*.1),
+                                                                        round(temp_timeline_table_long.CFMS.max()+temp_timeline_table_long.CFMS.max()*.1)])),
+                color="Company Name:N",
+                tooltip=["Company Name", "Year", "CFMS"],
+            ).interactive())
+        # DISPLAY THE CHART IN STREAMLIT
+        line_chart = line_chart.configure_legend(orient='top')
+        st.altair_chart(line_chart, use_container_width=True)
 
 elif menu == "Rankings":
     st.title("Rankings")
-    # CHANGE THE COLUMN NAMES SO THAT THEY ARE MORE EXPLICIT
-    chart_option_mapping = {'Index Weight':'S&P 500 Index Weight','TTM':'CFMS TTM','Latest Fiscal Year':'CFMS LFY'}
-    ranking_table = CFMS_df.rename(columns = chart_option_mapping)
+    col1, col2 = st.columns(2)
+    ranking_table = CFMS_df.copy().reset_index(drop=True)
+    # SET UP FILTERS FOR RANKING PAGE
+    sector_filter_options =  ['All'] + list(CFMS_df['Sector'].unique()) 
+    with col1:
+        sector_filter = st.selectbox('Select Sector:', options=sector_filter_options, index=0)
+    if sector_filter != 'All':
+        ranking_table = CFMS_df.copy().loc[CFMS_df.Sector==sector_filter].reset_index(drop=True)
+    industry_filter_options =  ['All'] + list(ranking_table['Industry'].unique()) 
+    with col2:
+        industry_filter = st.selectbox('Select Industry:', options=industry_filter_options, index=0)
+    if industry_filter != 'All':
+        ranking_table = ranking_table.copy().loc[ranking_table.Industry==industry_filter].reset_index(drop=True)
     # REMOVE THE COLUMNS FOR EACH YEAR CFMS
-    ranking_table = ranking_table.loc[:,:'4 QTR Ago']
+    ranking_table = ranking_table.loc[:,:main_table_display_columns[-1]]
     ranking_table.insert(1,'Stock Symbol',ranking_table.pop('Stock Symbol'))
-    numeric_cols = ranking_table.columns[3:]
-    ranking_table[numeric_cols] = ranking_table[numeric_cols].apply(pd.to_numeric, errors='coerce')
-    ranking_table = ranking_table.dropna(subset=['Company Name','Stock Symbol'])
-    st.dataframe(ranking_table, use_container_width=True)
+    st.dataframe(ranking_table, use_container_width=True, height=600)
 
 elif menu == "About":
     st.title("About This App")
