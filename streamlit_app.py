@@ -245,6 +245,6 @@ elif menu == "About":
         - **Fund Managers**: Identifies top-performing companies for diversified portfolios.
         """)
 
-# st.markdown("<h1 style='font-size: 20px;'>Last Data Refresh</h1>", unsafe_allow_html=True)
-st.header("Last Data Refresh")
+st.markdown("<h1 style='font-size: 18px;'>Last Data Refresh</h1>", unsafe_allow_html=True)
+# st.markdown("<h1 style='text-align: center;'>About Us</h1>", unsafe_allow_html=True)
 st.write(last_timestamp.split('_')[0]+'<br>'+last_timestamp.split('_')[1].replace('-',':'), unsafe_allow_html=True)
