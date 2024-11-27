@@ -70,6 +70,7 @@ if current_timestamp_date > last_timestamp_date and current_timestamp_time.split
     # Save the file
     with open(file_name, "w") as file:
         file.write(current_timestamp)
+    last_timestamp = current_timestamp
 else:
     CFMS_df = pd.read_csv('data/CashFlow Momentum Score -US & Canada Stocks.csv')
     CCE_df = pd.read_csv('data/components/Cash Flow Efficiency Normalized Score.csv')
@@ -225,3 +226,5 @@ elif menu == "About":
     Big Investors: People who manage lots of money and need to find companies that are really good at making and using cash.
     Money Experts: Financial analysts who want a quick and easy way to see how healthy a company’s cash flow is.
     Fund Managers: People who manage lots of stocks and need to find the best companies for their portfolio.''')
+    st.markdown("<h1 style='font-size: 20px;'>Last Data Refresh</h1>", unsafe_allow_html=True)
+    st.write(last_timestamp.split('_')[0]+'<br>'+last_timestamp.split('_')[1].replace('-',':'), unsafe_allow_html=True)
