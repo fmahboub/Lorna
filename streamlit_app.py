@@ -22,24 +22,23 @@ last_timestamp_time= last_timestamp.split('_')[1]
 est = pytz.timezone("US/Eastern")
 current_timestamp = datetime.datetime.now(est).strftime("%Y-%m-%d_%H-%M-%S")
 current_timestamp_date = current_timestamp.split('_')[0]
-current_timestamp_time= current_timestamp.split('_')[1]
+current_timestamp_time = current_timestamp.split('_')[1]
 
 # COMPARE DATES OF PREVIOUS AND CURRENT TIMESTAMPS AND CALL API IF THE DATE HAS INCREASED AND IT'S PASSED 12 NOON 
-if current_timestamp_date > last_timestamp_date and current_timestamp_time.split('-')[0]>'12':
+if current_timestamp_date >= last_timestamp_date and int(current_timestamp_time.split('-')[0])>=12:
     try:
         # AUTHENTICATE WITH GOOGLE SHEETS
         gc = gspread.service_account(filename='Google Cloud/blissful-flame-442915-s2-7a643e50638f.json')
     except:
-        # Load credentials from Streamlit secrets
-        credentials_json = st.secrets["google_cloud"]["credentials"]
-        credentials_dict = json.loads(credentials_json)
+        # LOAD SECRETS
+        credentials_dict = json.loads(st.secrets["google_cloud"]["credentials"])
 
-        # Authenticate using the credentials
+        # AUTHENTICATE USING THE CREDENTIALS
         scopes = ["https://www.googleapis.com/auth/spreadsheets", "https://www.googleapis.com/auth/drive"]
         credentials = Credentials.from_service_account_info(credentials_dict, scopes=scopes)
-
-        # Connect to Google Sheets
+        # CONNECT TO GOOGLE SHEETS
         gc = gspread.authorize(credentials)
+
     # OPEN THE MAIN SHEET
     CFMS_spreadsheet = gc.open("CashFlow Momentum Score (CFMS)- US & Canada Stocks")
     CFMS_df = pd.DataFrame(CFMS_spreadsheet.worksheet("CashFlow Momentum Score -US & Canada Stocks").get_all_records()).replace({'None': np.nan})
