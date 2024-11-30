@@ -25,7 +25,7 @@ current_timestamp_date = current_timestamp.split('_')[0]
 current_timestamp_time = current_timestamp.split('_')[1]
 
 # COMPARE DATES OF PREVIOUS AND CURRENT TIMESTAMPS AND CALL API IF THE DATE HAS INCREASED AND IT'S PASSED 12 NOON 
-if current_timestamp_date >= last_timestamp_date and int(current_timestamp_time.split('-')[0])>=12:
+if current_timestamp_date > last_timestamp_date and int(current_timestamp_time.split('-')[0])>=12:
     try:
         # AUTHENTICATE WITH GOOGLE SHEETS
         gc = gspread.service_account(filename='Google Cloud/blissful-flame-442915-s2-7a643e50638f.json')
