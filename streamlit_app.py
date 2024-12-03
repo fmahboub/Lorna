@@ -7,6 +7,7 @@ import datetime
 import pytz
 import json
 import altair as alt
+from lorna_functions import *
 
 
 # DATA LOADING SAVING AND PRE-PROCESSING CODE --------------------------------------------------------------------
@@ -46,7 +47,7 @@ if current_timestamp_date > last_timestamp_date and int(current_timestamp_time.s
     CFMS_df = CFMS_df.drop_duplicates(subset='Company Name').reset_index(drop=True)
 
     # LOAD COMPONENT TABLES
-    CCE_df = pd.DataFrame(CFMS_spreadsheet.worksheet("Cash Flow Efficiency Normalized Score").get_all_records())\
+    CFE_df = pd.DataFrame(CFMS_spreadsheet.worksheet("Cash Flow Efficiency Normalized Score").get_all_records())\
                                                             .replace({'None': np.nan}).replace({'': np.nan}).drop_duplicates(subset='Company Name').reset_index(drop=True)
     EBITDA_df = pd.DataFrame(CFMS_spreadsheet.worksheet("EBITDA Margin Normalized Score").get_all_records())\
                                                             .replace({'None': np.nan}).replace({'': np.nan}).drop_duplicates(subset='Company Name').reset_index(drop=True)
@@ -58,7 +59,7 @@ if current_timestamp_date > last_timestamp_date and int(current_timestamp_time.s
                                                             .replace({'None': np.nan}).replace({'': np.nan}).drop_duplicates(subset='Company Name').reset_index(drop=True)
 
     CFMS_df.to_csv('data/CashFlow Momentum Score -US & Canada Stocks.csv',index=False)
-    CCE_df.to_csv('data/components/Cash Flow Efficiency Normalized Score.csv',index=False)
+    CFE_df.to_csv('data/components/Cash Flow Efficiency Normalized Score.csv',index=False)
     EBITDA_df.to_csv('data/components/EBITDA Margin Normalized Score.csv',index=False)
     FCF_df.to_csv('data/components/FCF Yield Normalized Score.csv',index=False)
     OCFG_df.to_csv('data/components/Operating Cash Flow Growth Normalized Score.csv',index=False)
@@ -73,7 +74,7 @@ if current_timestamp_date > last_timestamp_date and int(current_timestamp_time.s
     last_timestamp = current_timestamp
 else:
     CFMS_df = pd.read_csv('data/CashFlow Momentum Score -US & Canada Stocks.csv')
-    CCE_df = pd.read_csv('data/components/Cash Flow Efficiency Normalized Score.csv')
+    CFE_df = pd.read_csv('data/components/Cash Flow Efficiency Normalized Score.csv')
     EBITDA_df = pd.read_csv('data/components/EBITDA Margin Normalized Score.csv')
     FCF_df = pd.read_csv('data/components/FCF Yield Normalized Score.csv')
     OCFG_df = pd.read_csv('data/components/Operating Cash Flow Growth Normalized Score.csv')
@@ -83,11 +84,15 @@ else:
 year_columns = [x for x in CFMS_df.columns if x.isnumeric()]
 non_score_columns = list(CFMS_df.columns)[:list(CFMS_df.columns).index('Stock Symbol')+1]
 score_columns = [x for x in CFMS_df.columns if x not in non_score_columns]
+# ENSURE SCORE COLUMNS ARE INT DTYPE
 CFMS_df[score_columns] = CFMS_df[score_columns].astype(pd.Int64Dtype())
+# ADD INVESTOR RATING COLUMN TO CFMS_df AFTER 'Stock Symbol' COLUMN
+rating_col_num = list(CFMS_df.columns).index('Stock Symbol') + 1
+CFMS_df.insert(rating_col_num, 'Cash Flow Investor Rating',CFMS_df['Trailing Twelve Months (TTM) CFMS'].apply(lambda x: cfms_to_rating(x)))
 # CREATE LIST OF COMPANY NAMES FOR USING IN DROP-DOWN MENU
 company_name_list = list(CFMS_df['Company Name'])
 main_table_display_columns = [x for x in CFMS_df.columns if x not in year_columns]
-comp_table_names = ['CCE_df','EBITDA_df','FCF_df','OCFG_df','ROIC_df']
+comp_table_names = ['CFE_df','EBITDA_df','FCF_df','OCFG_df','ROIC_df']
 # CONVERT SCORE COLUMNS TO INTS FOR EACH TABLE ABOVE
 for table_name in comp_table_names:
     globals()[table_name][score_columns] = globals()[table_name][score_columns].astype(pd.Int64Dtype())
@@ -97,12 +102,14 @@ st.set_page_config(layout="wide")
 
 # CREATE A NAVIGATION MENU AT THE TOP
 menu = st.radio("Navigate to:",
-    ("Home", "Rankings", "About"),
+    ("Home", "Compare", "Rankings","Terminology", "About"),
     horizontal=True)  # This makes the radio buttons horizontal
 # DISPLAY THE LOGO
 st.image('images/Lorna Logo.png',width=120)
 # DISPLAY DIFFERENT PAGES BASED ON SELECTION
-if menu == "Home":
+if menu == 'Home':
+    st.header("Home Page Coming Soon")
+elif menu == "Compare":
     st.write(
         "Compare Companies Using Cash Flow Momentum Score (CFMS)"
     )
@@ -115,25 +122,51 @@ if menu == "Home":
         temp_timeline_table = temp_table.copy()
         temp_timeline_table = temp_timeline_table[['Company Name']+[x for x in temp_timeline_table.columns if x in year_columns]]
         # FILTER temp_table TO ONLY CONTAIN APPROPRIATE COLUMNS
-        temp_table = temp_table[main_table_display_columns]
-        st.table(temp_table.reset_index(drop=True))
-        # Create a bar chart from the 'Values' column
+        temp_table = temp_table[main_table_display_columns].reset_index(drop=True)
+        # CUSTOM CSS FOR TRANSPARENT BACKGROUND AND ADAPTIVE HEADER COLOR
+        table_style = """
+            <style>
+                .stTable thead th {
+                    background-color: rgba(169, 169, 169, 0.1);  /* Light gray background for header */
+                    color: currentColor;                          /* Adaptive header text color */
+                    font-weight: bold;                            /* Bold header text */
+                }
+                .stTable td {
+                    background-color: rgba(0, 0, 0, 0);         /* Fully transparent background for cells */
+                    color: inherit;                               /* Inherit text color from parent (light/dark mode) */
+                }
+            </style>
+        """
+        # Inject the custom CSS
+        st.markdown(table_style, unsafe_allow_html=True)
+        # DISPLAY MAIN TABLE
+        st.table(temp_table)
+        # CREATE A BAR CHART FROM THE 'VALUES' COLUMN
         chart_option = st.radio("Choose metric to display:",('Trailing Twelve Months (TTM) CFMS', 'Year-to-Date (YTD) CFMS', 'Latest Reported Quarter CFMS',),horizontal =True)
         # CREATE BAR CHART WITH CUSTOM Y-AXIS RANGE
-        chart = alt.Chart(temp_table).mark_bar().encode(
+            # FIND COLS WITH NULL VALUES AND DEPENDING ON THE SELECTION FROM chart_option REMOVE ANY ROW WITH NULLS
+        temp_table_null_cols = temp_table.columns[temp_table.isnull().any()].tolist()
+        if chart_option in temp_table_null_cols:
+            temp_chart_table = temp_table.copy()[~temp_table.isin(['<NA>', 'NA', 'None']).any(axis=1)].dropna().reset_index(drop=True)
+        else:
+            temp_chart_table = temp_table.copy()
+        chart = alt.Chart(temp_chart_table).mark_bar().encode(
             x=alt.X('Company Name',title='Company',axis=alt.Axis(labelAngle=0)),
-            y=alt.Y(chart_option, scale=alt.Scale(domain=[0, max(temp_table[chart_option])+5]), title='CFMS  '+chart_option))
+            y=alt.Y(chart_option, scale=alt.Scale(domain=[0, max(temp_chart_table[chart_option])+5]), title='CFMS  '+chart_option))
         st.altair_chart(chart, use_container_width=True)
 
         # CREATE TEMP TABLE OF COMPONENTS FOR DISPLAY
         temp_comps_table = temp_table[non_score_columns].reset_index(drop=True)
+        temp_comps_table = temp_comps_table[~temp_comps_table.isin(['<NA>', 'NA', 'None']).any(axis=1)]
+        comps_table_name_map = {'FCF':'FCF Yield','EBITDA':'EBITDA Margin'}
         for table_name in comp_table_names:
             temp_comp_table = globals()[table_name]
             temp_comp_table = temp_comp_table.loc[temp_comp_table['Company Name'].isin(selected_companies)]
             temp_comp_table = temp_comp_table[non_score_columns+[chart_option]].rename(columns={chart_option:table_name[:-3]+' '+chart_option}).reset_index(drop=True)
             temp_comps_table = pd.merge(temp_comps_table, temp_comp_table, how='outer', on=non_score_columns)
         temp_comps_table[temp_comps_table.columns[len(non_score_columns):]] = temp_comps_table[temp_comps_table.columns[len(non_score_columns):]].fillna(0).astype(int)
-
+        # ENSURE COLUMNS HAVE FULL NAMES BASED ON THE comps_table_name_map
+        temp_comps_table.columns = [x.replace(x.split()[0],comps_table_name_map[x.split()[0]]) if x.split()[0] in comps_table_name_map.keys() else x for x in temp_comps_table.columns]
         # MELT THE DATAFRAME TO GET IT INTO THE RIGHT FORMAT FOR ALTAIR
         df_melted = temp_comps_table.melt(
             id_vars=['Company Name', 'Stock Symbol'],
@@ -190,6 +223,63 @@ elif menu == "Rankings":
     ranking_table = ranking_table.loc[:,:main_table_display_columns[-1]]
     ranking_table.insert(1,'Stock Symbol',ranking_table.pop('Stock Symbol'))
     st.dataframe(ranking_table, use_container_width=True, height=600)
+
+elif menu == "Terminology":
+    # SET UP THE PAGE TITLE
+    st.title("Terminology")
+
+    # Define sections of terminology
+    st.header("Metrics")
+    # st.subheader("Definition, Rationale, and Description")
+
+    # Combined metrics data, merging Normalized Scores
+    metrics_data = [
+        {
+            "Metric":"Cash Flow Momentum Score (CFMS)",
+            "Definition": "A score that measures how well a company generates, grows, and uses its cash.",
+            "Rationale": "Simplifies financial data into an easy-to-understand score, helping investors pick strong companies.",
+            "Description": "Evaluates companies using five key metrics. Normalized scores range from 1-100, with higher scores indicating better cash flow health."
+
+        },
+        {
+            "Metric": "Cash Flow Efficiency (CFE)",
+            "Definition": "Measures the proportion of net income that is converted into cash from operating activities.",
+            "Rationale": "A ratio above 1 indicates high earnings quality, suggesting that net income is backed by actual cash flow.",
+            "Description": "Reflects the quality of earnings by showing how well net income translates into real cash flow. Normalized scores range from 1-100, with higher scores indicating better earnings quality."
+        },
+        {
+            "Metric": "EBITDA Margin",
+            "Definition": "The ratio of Earnings Before Interest, Taxes, Depreciation, and Amortization (EBITDA) to revenue.",
+            "Rationale": "Evaluates core profitability and operational efficiency, focusing on a company's ability to generate cash from its operations.",
+            "Description": "Indicates how efficiently a company generates profit from its core operations. Normalized scores range from 1-100, with higher scores reflecting stronger EBITDA margins."
+        },
+        {
+            "Metric": "Operating Cash Flow Growth (OCFG)",
+            "Definition": "The year-over-year growth rate of operating cash flow.",
+            "Rationale": "Sustained growth in OCF indicates that a company is successfully expanding its business and generating more cash from core operations.",
+            "Description": "Highlights the company's ability to grow its cash generation over time. Normalized scores range from 1-100, with higher scores showing robust and sustained growth."
+        },
+        {
+            "Metric": "Free Cash Flow Yield (FCF Yield)",
+            "Definition": "The ratio of free cash flow to market capitalization.",
+            "Rationale": "Reflects how much cash a company is generating relative to its stock price, serving as an indicator of valuation and shareholder returns.",
+            "Description": "Helps investors assess the stock's value relative to its cash-generating capacity. Normalized scores range from 1-100, with higher scores indicating better valuation efficiency."
+        },
+        {
+            "Metric": "Return on Invested Capital (ROIC)",
+            "Definition": "Measures how efficiently a company generates profits relative to the capital it has invested in its business.",
+            "Rationale": "A high ROIC indicates efficient use of capital, suggesting strong value creation for shareholders.",
+            "Description": "Shows how well a company uses its resources to create value. Normalized scores range from 1-100, with higher scores reflecting more efficient capital use."
+        }
+    ]
+
+    # Display metrics with headers and formatting
+    for metric in metrics_data:
+        st.markdown(f"{metric['Metric']}")
+        st.markdown(f"- **Definition:** {metric['Definition']}")
+        st.markdown(f"- **Rationale:** {metric['Rationale']}")
+        st.markdown(f"- **Description:** {metric['Description']}")
+        st.write("---")
 
 elif menu == "About":
     # Center the title using HTML and CSS
