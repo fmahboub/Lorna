@@ -99,242 +99,307 @@ for table_name in comp_table_names:
 
 # APP CODE ------------------------------------------------------------------------------------
 st.set_page_config(layout="wide")
+if 'landing_page' not in st.session_state:
+    st.session_state.landing_page = True
 
-# CREATE A NAVIGATION MENU AT THE TOP
-menu = st.radio("Navigate to:",
-    ("Home", "Compare", "Rankings","Terminology", "About"),
-    horizontal=True)  # This makes the radio buttons horizontal
-# DISPLAY THE LOGO
-st.image('images/Lorna Logo.png',width=120)
-# DISPLAY DIFFERENT PAGES BASED ON SELECTION
-if menu == 'Home':
-    st.header("Home Page Coming Soon")
-elif menu == "Compare":
-    st.write(
-        "Compare Companies Using Cash Flow Momentum Score (CFMS)"
+if st.session_state.landing_page:
+    # Header centered and styled
+    st.markdown(
+        """
+        <style>
+            .centered {
+                display: flex;
+                flex-direction: column;
+                justify-content: center;
+                align-items: center;
+            }
+        </style>
+        <div class="centered">
+            <h3 style="text-align: center; color: orange;">Find Stock Ideas With Ease</h3>
+            <h2 style="text-align: center; color: white; font-size: 300%;">Cash Flow Momentum Score</h2>
+            <div style="text-align: center; color: lightgray; font-size: 120%;">Focus of genuine cashflow earnings performance</div>
+        </div>
+        """, 
+        unsafe_allow_html=True
     )
-    # CREATES DROPDOWN MENU FOR SELECTING COMPANIES
-    selected_companies = st.multiselect("Select Companies to Compare", company_name_list, default=company_name_list[:3])
-    # ONLY DISPLAY ANYTHING IF THE SELECTION HAS AT LEAST 1 COMPANY
-    if len(selected_companies) > 0:
-        temp_table = CFMS_df.loc[CFMS_df['Company Name'].isin(selected_companies)]
-        # MAKE A COPY FOR TIMELINE VISUAL
-        temp_timeline_table = temp_table.copy()
-        temp_timeline_table = temp_timeline_table[['Company Name']+[x for x in temp_timeline_table.columns if x in year_columns]]
-        # FILTER temp_table TO ONLY CONTAIN APPROPRIATE COLUMNS
-        temp_table = temp_table[main_table_display_columns].reset_index(drop=True)
-        # CUSTOM CSS FOR TRANSPARENT BACKGROUND AND ADAPTIVE HEADER COLOR
-        table_style = """
-            <style>
-                .stTable thead th {
-                    background-color: rgba(169, 169, 169, 0.1);  /* Light gray background for header */
-                    color: currentColor;                          /* Adaptive header text color */
-                    font-weight: bold;                            /* Bold header text */
-                }
-                .stTable td {
-                    background-color: rgba(0, 0, 0, 0);         /* Fully transparent background for cells */
-                    color: inherit;                               /* Inherit text color from parent (light/dark mode) */
-                }
-            </style>
-        """
-        # Inject the custom CSS
-        st.markdown(table_style, unsafe_allow_html=True)
-        # DISPLAY MAIN TABLE
-        st.table(temp_table)
-        # CREATE A BAR CHART FROM THE 'VALUES' COLUMN
-        chart_option = st.radio("Choose metric to display:",('Trailing Twelve Months (TTM) CFMS', 'Year-to-Date (YTD) CFMS', 'Latest Reported Quarter CFMS',),horizontal =True)
-        # CREATE BAR CHART WITH CUSTOM Y-AXIS RANGE
-            # FIND COLS WITH NULL VALUES AND DEPENDING ON THE SELECTION FROM chart_option REMOVE ANY ROW WITH NULLS
-        temp_table_null_cols = temp_table.columns[temp_table.isnull().any()].tolist()
-        if chart_option in temp_table_null_cols:
-            temp_chart_table = temp_table.copy()[~temp_table.isin(['<NA>', 'NA', 'None']).any(axis=1)].dropna().reset_index(drop=True)
-        else:
-            temp_chart_table = temp_table.copy()
-        chart = alt.Chart(temp_chart_table).mark_bar().encode(
-            x=alt.X('Company Name',title='Company',axis=alt.Axis(labelAngle=0)),
-            y=alt.Y(chart_option, scale=alt.Scale(domain=[0, max(temp_chart_table[chart_option])+5]), title='CFMS  '+chart_option))
-        st.altair_chart(chart, use_container_width=True)
 
-        # CREATE TEMP TABLE OF COMPONENTS FOR DISPLAY
-        temp_comps_table = temp_table[non_score_columns].reset_index(drop=True)
-        temp_comps_table = temp_comps_table[~temp_comps_table.isin(['<NA>', 'NA', 'None']).any(axis=1)]
-        comps_table_name_map = {'FCF':'FCF Yield','EBITDA':'EBITDA Margin'}
-        for table_name in comp_table_names:
-            temp_comp_table = globals()[table_name]
-            temp_comp_table = temp_comp_table.loc[temp_comp_table['Company Name'].isin(selected_companies)]
-            temp_comp_table = temp_comp_table[non_score_columns+[chart_option]].rename(columns={chart_option:table_name[:-3]+' '+chart_option}).reset_index(drop=True)
-            temp_comps_table = pd.merge(temp_comps_table, temp_comp_table, how='outer', on=non_score_columns)
-        temp_comps_table[temp_comps_table.columns[len(non_score_columns):]] = temp_comps_table[temp_comps_table.columns[len(non_score_columns):]].fillna(0).astype(int)
-        # ENSURE COLUMNS HAVE FULL NAMES BASED ON THE comps_table_name_map
-        temp_comps_table.columns = [x.replace(x.split()[0],comps_table_name_map[x.split()[0]]) if x.split()[0] in comps_table_name_map.keys() else x for x in temp_comps_table.columns]
-        # MELT THE DATAFRAME TO GET IT INTO THE RIGHT FORMAT FOR ALTAIR
-        df_melted = temp_comps_table.melt(
-            id_vars=['Company Name', 'Stock Symbol'],
-            value_vars=temp_comps_table.columns[len(non_score_columns):],
-            var_name='Metric',
-            value_name='Value')
-
-        # CREATE ALTAIR CHART WITH DODGED (side-by-side) BARS FOR EACH COMPONENT
-        comp_bar_chart = alt.Chart(df_melted).mark_bar().encode(
-            x=alt.X('Company Name:N', title='Company',axis=alt.Axis(labelAngle=0)),
-            y=alt.Y('Value:Q', title='Normalized  Value'),
-            color='Metric:N',
-            xOffset='Metric:N',  # This creates the side-by-side effect
-            tooltip=['Company Name', 'Stock Symbol', 'Metric', 'Value'])
-
-        # SET LEGEND ORIENTATION TO TOP
-        comp_bar_chart = comp_bar_chart.configure_legend(orient='top', labelLimit=300)
-        # DISPLAY THE CHART IN STREAMLIT
-        st.altair_chart(comp_bar_chart, use_container_width=True)
-
-        # PIVOT TIMELINE TABLE TO LONG FORMAT
-        temp_timeline_table_long = temp_timeline_table.melt(id_vars=["Company Name"], var_name="Year", value_name="CFMS")
-        # CREATE THE LINE CHART
-        line_chart = (
-            alt.Chart(temp_timeline_table_long)
-            .mark_line()
-            .encode(
-                x=alt.X("Year:O", title="Year"),
-                y=alt.Y("CFMS:Q", title="CFMS", scale=alt.Scale(domain=[round(temp_timeline_table_long.CFMS.min()-temp_timeline_table_long.CFMS.min()*.1),
-                                                                        round(temp_timeline_table_long.CFMS.max()+temp_timeline_table_long.CFMS.max()*.1)])),
-                color="Company Name:N",
-                tooltip=["Company Name", "Year", "CFMS"],
-            ).interactive())
-        # DISPLAY THE CHART IN STREAMLIT
-        line_chart = line_chart.configure_legend(orient='top')
-        st.altair_chart(line_chart, use_container_width=True)
-
-elif menu == "Rankings":
-    st.title("Rankings")
-    col1, col2 = st.columns(2)
-    ranking_table = CFMS_df.copy().reset_index(drop=True)
-    # SET UP FILTERS FOR RANKING PAGE
-    sector_filter_options =  ['All'] + list(CFMS_df['Sector'].unique()) 
-    with col1:
-        sector_filter = st.selectbox('Select Sector:', options=sector_filter_options, index=0)
-    if sector_filter != 'All':
-        ranking_table = CFMS_df.copy().loc[CFMS_df.Sector==sector_filter].reset_index(drop=True)
-    industry_filter_options =  ['All'] + list(ranking_table['Industry'].unique()) 
-    with col2:
-        industry_filter = st.selectbox('Select Industry:', options=industry_filter_options, index=0)
-    if industry_filter != 'All':
-        ranking_table = ranking_table.copy().loc[ranking_table.Industry==industry_filter].reset_index(drop=True)
-    # REMOVE THE COLUMNS FOR EACH YEAR CFMS
-    ranking_table = ranking_table.loc[:,:main_table_display_columns[-1]]
-    ranking_table.insert(1,'Stock Symbol',ranking_table.pop('Stock Symbol'))
-    st.dataframe(ranking_table, use_container_width=True, height=600)
-
-elif menu == "Terminology":
-    # SET UP THE PAGE TITLE
-    st.title("Terminology")
-
-    # Define sections of terminology
-    st.header("Metrics")
-    # st.subheader("Definition, Rationale, and Description")
-
-    # Combined metrics data, merging Normalized Scores
-    metrics_data = [
-        {
-            "Metric":"Cash Flow Momentum Score (CFMS)",
-            "Definition": "A score that measures how well a company generates, grows, and uses its cash.",
-            "Rationale": "Simplifies financial data into an easy-to-understand score, helping investors pick strong companies.",
-            "Description": "Evaluates companies using five key metrics. Normalized scores range from 1-100, with higher scores indicating better cash flow health."
-
-        },
-        {
-            "Metric": "Cash Flow Efficiency (CFE)",
-            "Definition": "Measures the proportion of net income that is converted into cash from operating activities.",
-            "Rationale": "A ratio above 1 indicates high earnings quality, suggesting that net income is backed by actual cash flow.",
-            "Description": "Reflects the quality of earnings by showing how well net income translates into real cash flow. Normalized scores range from 1-100, with higher scores indicating better earnings quality."
-        },
-        {
-            "Metric": "EBITDA Margin",
-            "Definition": "The ratio of Earnings Before Interest, Taxes, Depreciation, and Amortization (EBITDA) to revenue.",
-            "Rationale": "Evaluates core profitability and operational efficiency, focusing on a company's ability to generate cash from its operations.",
-            "Description": "Indicates how efficiently a company generates profit from its core operations. Normalized scores range from 1-100, with higher scores reflecting stronger EBITDA margins."
-        },
-        {
-            "Metric": "Operating Cash Flow Growth (OCFG)",
-            "Definition": "The year-over-year growth rate of operating cash flow.",
-            "Rationale": "Sustained growth in OCF indicates that a company is successfully expanding its business and generating more cash from core operations.",
-            "Description": "Highlights the company's ability to grow its cash generation over time. Normalized scores range from 1-100, with higher scores showing robust and sustained growth."
-        },
-        {
-            "Metric": "Free Cash Flow Yield (FCF Yield)",
-            "Definition": "The ratio of free cash flow to market capitalization.",
-            "Rationale": "Reflects how much cash a company is generating relative to its stock price, serving as an indicator of valuation and shareholder returns.",
-            "Description": "Helps investors assess the stock's value relative to its cash-generating capacity. Normalized scores range from 1-100, with higher scores indicating better valuation efficiency."
-        },
-        {
-            "Metric": "Return on Invested Capital (ROIC)",
-            "Definition": "Measures how efficiently a company generates profits relative to the capital it has invested in its business.",
-            "Rationale": "A high ROIC indicates efficient use of capital, suggesting strong value creation for shareholders.",
-            "Description": "Shows how well a company uses its resources to create value. Normalized scores range from 1-100, with higher scores reflecting more efficient capital use."
+    # BUTTON FORMATTING
+    st.markdown("""
+        <style>
+        .centered-button {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            margin-top: 20px;
         }
-    ]
+        .stButton {
+            width: auto !important;
+            display: flex !important;
+            justify-content: center !important;
+        }
+        .stButton button {
+            background-color: #FF5733;  /* Orange color */
+            color: black;               /* Text color */
+            border: none;
+            padding: 10px 20px;
+            text-align: center;
+            font-size: 16px;
+            border-radius: 5px;
+            cursor: pointer;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);  /* Optional shadow */
+        }
+        .stButton button:hover {
+            background-color: #FF3D00; /* Darker orange on hover */
+        }
+        </style>
+    """, unsafe_allow_html=True)
 
-    # Display metrics with headers and formatting
-    for metric in metrics_data:
-        st.markdown(f"{metric['Metric']}")
-        st.markdown(f"- **Definition:** {metric['Definition']}")
-        st.markdown(f"- **Rationale:** {metric['Rationale']}")
-        st.markdown(f"- **Description:** {metric['Description']}")
-        st.write("---")
+    # Centering the button by using a div class and making it a part of the layout
+    st.markdown('<div class="centered-button">', unsafe_allow_html=True)
 
-elif menu == "About":
-    # Center the title using HTML and CSS
-    st.markdown("<h1 style='text-align: center;'>About Us</h1>", unsafe_allow_html=True)
-    # Add padding or spacing around the content
-    # st.markdown("<div style='padding: 20px;'>", unsafe_allow_html=True)
+    if st.button("Try it out"):
+        st.session_state.landing_page = False
+        st.rerun()   
 
-    # Section 1: The Problem
-    st.header("The Problem")
-    st.write(
-        """
-        Investors often face challenges in identifying the best companies to invest in. While financial reports may look promising, they can be misleading due to:
-        - **Accounting Tricks**: Inflated profits that don't reflect reality.
-        - **Confusing Numbers**: Difficulty distinguishing real cash flow from paper profits.
-        - **Inefficient Spending**: Hidden misuse of funds.
-        - **Information Overload**: Too many metrics make decision-making overwhelming.
-        """)
+    # Closing the div to center the button
+    st.markdown('</div>', unsafe_allow_html=True)
+    
+if not st.session_state.landing_page:
+    # CREATE A NAVIGATION MENU AT THE TOP
+    menu = st.radio("Navigate to:",
+        ("Compare", "Rankings","Terminology", "About"),
+        horizontal=True)  # This makes the radio buttons horizontal
+    # DISPLAY THE LOGO
+    st.image('images/Lorna Logo.png',width=120)
 
-    st.markdown("---")  # Horizontal line for separation
+    # DISPLAY DIFFERENT PAGES BASED ON SELECTION
+    if menu == "Compare":
+        st.write(
+            "Compare Companies Using Cash Flow Momentum Score (CFMS)"
+        )
+        # CREATES DROPDOWN MENU FOR SELECTING COMPANIES
+        selected_companies = st.multiselect("Select Companies to Compare", company_name_list, default=company_name_list[:3])
+        # ONLY DISPLAY ANYTHING IF THE SELECTION HAS AT LEAST 1 COMPANY
+        if len(selected_companies) > 0:
+            temp_table = CFMS_df.loc[CFMS_df['Company Name'].isin(selected_companies)]
+            # MAKE A COPY FOR TIMELINE VISUAL
+            temp_timeline_table = temp_table.copy()
+            temp_timeline_table = temp_timeline_table[['Company Name']+[x for x in temp_timeline_table.columns if x in year_columns]]
+            # FILTER temp_table TO ONLY CONTAIN APPROPRIATE COLUMNS
+            temp_table = temp_table[main_table_display_columns].reset_index(drop=True)
+            # CUSTOM CSS FOR TRANSPARENT BACKGROUND AND ADAPTIVE HEADER COLOR
+            table_style = """
+                <style>
+                    .stTable thead th {
+                        background-color: rgba(169, 169, 169, 0.1);  /* Light gray background for header */
+                        color: currentColor;                          /* Adaptive header text color */
+                        font-weight: bold;                            /* Bold header text */
+                    }
+                    .stTable td {
+                        background-color: rgba(0, 0, 0, 0);         /* Fully transparent background for cells */
+                        color: inherit;                               /* Inherit text color from parent (light/dark mode) */
+                    }
+                </style>
+            """
+            # Inject the custom CSS
+            st.markdown(table_style, unsafe_allow_html=True)
+            # DISPLAY MAIN TABLE
+            st.table(temp_table)
+            # CREATE A BAR CHART FROM THE 'VALUES' COLUMN
+            chart_option = st.radio("Choose metric to display:",('Trailing Twelve Months (TTM) CFMS', 'Year-to-Date (YTD) CFMS', 'Latest Reported Quarter CFMS',),horizontal =True)
+            # CREATE BAR CHART WITH CUSTOM Y-AXIS RANGE
+                # FIND COLS WITH NULL VALUES AND DEPENDING ON THE SELECTION FROM chart_option REMOVE ANY ROW WITH NULLS
+            temp_table_null_cols = temp_table.columns[temp_table.isnull().any()].tolist()
+            if chart_option in temp_table_null_cols:
+                temp_chart_table = temp_table.copy()[~temp_table.isin(['<NA>', 'NA', 'None']).any(axis=1)].dropna().reset_index(drop=True)
+            else:
+                temp_chart_table = temp_table.copy()
+            chart = alt.Chart(temp_chart_table).mark_bar().encode(
+                x=alt.X('Company Name',title='Company',axis=alt.Axis(labelAngle=0)),
+                y=alt.Y(chart_option, scale=alt.Scale(domain=[0, max(temp_chart_table[chart_option])+5]), title='CFMS  '+chart_option))
+            st.altair_chart(chart, use_container_width=True)
 
-    # Section 2: The Need
-    st.header("The Need")
-    st.write(
-        """
-        Investors need a clear, reliable way to evaluate a company's financial health:
-        - **Focus on Real Cash**: Highlighting actual earnings, not just accounting figures.
-        - **Simplified Scoring**: Easy-to-understand metrics that cut through the noise.
-        - **Long-Term Insights**: Tools to identify companies with sustainable growth potential.
-        """)
+            # CREATE TEMP TABLE OF COMPONENTS FOR DISPLAY
+            temp_comps_table = temp_table[non_score_columns].reset_index(drop=True)
+            temp_comps_table = temp_comps_table[~temp_comps_table.isin(['<NA>', 'NA', 'None']).any(axis=1)]
+            comps_table_name_map = {'FCF':'FCF Yield','EBITDA':'EBITDA Margin'}
+            for table_name in comp_table_names:
+                temp_comp_table = globals()[table_name]
+                temp_comp_table = temp_comp_table.loc[temp_comp_table['Company Name'].isin(selected_companies)]
+                temp_comp_table = temp_comp_table[non_score_columns+[chart_option]].rename(columns={chart_option:table_name[:-3]+' '+chart_option}).reset_index(drop=True)
+                temp_comps_table = pd.merge(temp_comps_table, temp_comp_table, how='outer', on=non_score_columns)
+            temp_comps_table[temp_comps_table.columns[len(non_score_columns):]] = temp_comps_table[temp_comps_table.columns[len(non_score_columns):]].fillna(0).astype(int)
+            # ENSURE COLUMNS HAVE FULL NAMES BASED ON THE comps_table_name_map
+            temp_comps_table.columns = [x.replace(x.split()[0],comps_table_name_map[x.split()[0]]) if x.split()[0] in comps_table_name_map.keys() else x for x in temp_comps_table.columns]
+            # MELT THE DATAFRAME TO GET IT INTO THE RIGHT FORMAT FOR ALTAIR
+            df_melted = temp_comps_table.melt(
+                id_vars=['Company Name', 'Stock Symbol'],
+                value_vars=temp_comps_table.columns[len(non_score_columns):],
+                var_name='Metric',
+                value_name='Value')
 
-    st.markdown("---")
+            # CREATE ALTAIR CHART WITH DODGED (side-by-side) BARS FOR EACH COMPONENT
+            comp_bar_chart = alt.Chart(df_melted).mark_bar().encode(
+                x=alt.X('Company Name:N', title='Company',axis=alt.Axis(labelAngle=0)),
+                y=alt.Y('Value:Q', title='Normalized  Value'),
+                color='Metric:N',
+                xOffset='Metric:N',  # This creates the side-by-side effect
+                tooltip=['Company Name', 'Stock Symbol', 'Metric', 'Value'])
 
-    # Section 3: Our Solution
-    st.header("Our Solution")
-    st.write(
-        """
-        The **Cash Flow Momentum Score (CFMS)** simplifies investment decisions by focusing on what really matters:
-        - **Real Money Insights**: Evaluates genuine cash flow over superficial profits.
-        - **Clear Scoring System**: Condenses complex data into an easy-to-use score.
-        - **Future-Focused**: Identifies companies with strong long-term potential.
-        - **Risk Reduction**: Flags businesses with poor cash management or misleading numbers.
-        """)
+            # SET LEGEND ORIENTATION TO TOP
+            comp_bar_chart = comp_bar_chart.configure_legend(orient='top', labelLimit=300)
+            # DISPLAY THE CHART IN STREAMLIT
+            st.altair_chart(comp_bar_chart, use_container_width=True)
 
-    st.markdown("---")
+            # PIVOT TIMELINE TABLE TO LONG FORMAT
+            temp_timeline_table_long = temp_timeline_table.melt(id_vars=["Company Name"], var_name="Year", value_name="CFMS")
+            # CREATE THE LINE CHART
+            line_chart = (
+                alt.Chart(temp_timeline_table_long)
+                .mark_line()
+                .encode(
+                    x=alt.X("Year:O", title="Year"),
+                    y=alt.Y("CFMS:Q", title="CFMS", scale=alt.Scale(domain=[round(temp_timeline_table_long.CFMS.min()-temp_timeline_table_long.CFMS.min()*.1),
+                                                                            round(temp_timeline_table_long.CFMS.max()+temp_timeline_table_long.CFMS.max()*.1)])),
+                    color="Company Name:N",
+                    tooltip=["Company Name", "Year", "CFMS"],
+                ).interactive())
+            # DISPLAY THE CHART IN STREAMLIT
+            line_chart = line_chart.configure_legend(orient='top')
+            st.altair_chart(line_chart, use_container_width=True)
 
-    # Section 4: Who Benefits
-    st.header("Who Benefits?")
-    st.write(
-        """
-        - **Individual Investors**: Simplifies stock selection for personal portfolios.
-        - **Institutional Investors**: Enhances decision-making for large-scale investments.
-        - **Financial Analysts**: Streamlines evaluation of a company’s cash flow health.
-        - **Fund Managers**: Identifies top-performing companies for diversified portfolios.
-        """)
+    elif menu == "Rankings":
+        st.title("Rankings")
+        col1, col2 = st.columns(2)
+        ranking_table = CFMS_df.copy().reset_index(drop=True)
+        # SET UP FILTERS FOR RANKING PAGE
+        sector_filter_options =  ['All'] + list(CFMS_df['Sector'].unique()) 
+        with col1:
+            sector_filter = st.selectbox('Select Sector:', options=sector_filter_options, index=0)
+        if sector_filter != 'All':
+            ranking_table = CFMS_df.copy().loc[CFMS_df.Sector==sector_filter].reset_index(drop=True)
+        industry_filter_options =  ['All'] + list(ranking_table['Industry'].unique()) 
+        with col2:
+            industry_filter = st.selectbox('Select Industry:', options=industry_filter_options, index=0)
+        if industry_filter != 'All':
+            ranking_table = ranking_table.copy().loc[ranking_table.Industry==industry_filter].reset_index(drop=True)
+        # REMOVE THE COLUMNS FOR EACH YEAR CFMS
+        ranking_table = ranking_table.loc[:,:main_table_display_columns[-1]]
+        ranking_table.insert(1,'Stock Symbol',ranking_table.pop('Stock Symbol'))
+        st.dataframe(ranking_table, use_container_width=True, height=600)
 
-st.markdown("<h1 style='font-size: 18px;'>Last Data Refresh</h1>", unsafe_allow_html=True)
-# st.markdown("<h1 style='text-align: center;'>About Us</h1>", unsafe_allow_html=True)
-st.write(last_timestamp.split('_')[0]+'<br>'+last_timestamp.split('_')[1].replace('-',':'), unsafe_allow_html=True)
+    elif menu == "Terminology":
+        # SET UP THE PAGE TITLE
+        st.title("Terminology")
+
+        # Define sections of terminology
+        st.header("Metrics")
+        # st.subheader("Definition, Rationale, and Description")
+
+        # Combined metrics data, merging Normalized Scores
+        metrics_data = [
+            {
+                "Metric":"Cash Flow Momentum Score (CFMS)",
+                "Definition": "A score that measures how well a company generates, grows, and uses its cash.",
+                "Rationale": "Simplifies financial data into an easy-to-understand score, helping investors pick strong companies.",
+                "Description": "Evaluates companies using five key metrics. Normalized scores range from 1-100, with higher scores indicating better cash flow health."
+
+            },
+            {
+                "Metric": "Cash Flow Efficiency (CFE)",
+                "Definition": "Measures the proportion of net income that is converted into cash from operating activities.",
+                "Rationale": "A ratio above 1 indicates high earnings quality, suggesting that net income is backed by actual cash flow.",
+                "Description": "Reflects the quality of earnings by showing how well net income translates into real cash flow. Normalized scores range from 1-100, with higher scores indicating better earnings quality."
+            },
+            {
+                "Metric": "EBITDA Margin",
+                "Definition": "The ratio of Earnings Before Interest, Taxes, Depreciation, and Amortization (EBITDA) to revenue.",
+                "Rationale": "Evaluates core profitability and operational efficiency, focusing on a company's ability to generate cash from its operations.",
+                "Description": "Indicates how efficiently a company generates profit from its core operations. Normalized scores range from 1-100, with higher scores reflecting stronger EBITDA margins."
+            },
+            {
+                "Metric": "Operating Cash Flow Growth (OCFG)",
+                "Definition": "The year-over-year growth rate of operating cash flow.",
+                "Rationale": "Sustained growth in OCF indicates that a company is successfully expanding its business and generating more cash from core operations.",
+                "Description": "Highlights the company's ability to grow its cash generation over time. Normalized scores range from 1-100, with higher scores showing robust and sustained growth."
+            },
+            {
+                "Metric": "Free Cash Flow Yield (FCF Yield)",
+                "Definition": "The ratio of free cash flow to market capitalization.",
+                "Rationale": "Reflects how much cash a company is generating relative to its stock price, serving as an indicator of valuation and shareholder returns.",
+                "Description": "Helps investors assess the stock's value relative to its cash-generating capacity. Normalized scores range from 1-100, with higher scores indicating better valuation efficiency."
+            },
+            {
+                "Metric": "Return on Invested Capital (ROIC)",
+                "Definition": "Measures how efficiently a company generates profits relative to the capital it has invested in its business.",
+                "Rationale": "A high ROIC indicates efficient use of capital, suggesting strong value creation for shareholders.",
+                "Description": "Shows how well a company uses its resources to create value. Normalized scores range from 1-100, with higher scores reflecting more efficient capital use."
+            }
+        ]
+
+        # Display metrics with headers and formatting
+        for metric in metrics_data:
+            st.markdown(f"{metric['Metric']}")
+            st.markdown(f"- **Definition:** {metric['Definition']}")
+            st.markdown(f"- **Rationale:** {metric['Rationale']}")
+            st.markdown(f"- **Description:** {metric['Description']}")
+            st.write("---")
+
+    elif menu == "About":
+        # Center the title using HTML and CSS
+        st.markdown("<h1 style='text-align: center;'>About Us</h1>", unsafe_allow_html=True)
+        # Add padding or spacing around the content
+        # st.markdown("<div style='padding: 20px;'>", unsafe_allow_html=True)
+
+        # Section 1: The Problem
+        st.header("The Problem")
+        st.write(
+            """
+            Investors often face challenges in identifying the best companies to invest in. While financial reports may look promising, they can be misleading due to:
+            - **Accounting Tricks**: Inflated profits that don't reflect reality.
+            - **Confusing Numbers**: Difficulty distinguishing real cash flow from paper profits.
+            - **Inefficient Spending**: Hidden misuse of funds.
+            - **Information Overload**: Too many metrics make decision-making overwhelming.
+            """)
+
+        st.markdown("---")  # Horizontal line for separation
+
+        # Section 2: The Need
+        st.header("The Need")
+        st.write(
+            """
+            Investors need a clear, reliable way to evaluate a company's financial health:
+            - **Focus on Real Cash**: Highlighting actual earnings, not just accounting figures.
+            - **Simplified Scoring**: Easy-to-understand metrics that cut through the noise.
+            - **Long-Term Insights**: Tools to identify companies with sustainable growth potential.
+            """)
+
+        st.markdown("---")
+
+        # Section 3: Our Solution
+        st.header("Our Solution")
+        st.write(
+            """
+            The **Cash Flow Momentum Score (CFMS)** simplifies investment decisions by focusing on what really matters:
+            - **Real Money Insights**: Evaluates genuine cash flow over superficial profits.
+            - **Clear Scoring System**: Condenses complex data into an easy-to-use score.
+            - **Future-Focused**: Identifies companies with strong long-term potential.
+            - **Risk Reduction**: Flags businesses with poor cash management or misleading numbers.
+            """)
+
+        st.markdown("---")
+
+        # Section 4: Who Benefits
+        st.header("Who Benefits?")
+        st.write(
+            """
+            - **Individual Investors**: Simplifies stock selection for personal portfolios.
+            - **Institutional Investors**: Enhances decision-making for large-scale investments.
+            - **Financial Analysts**: Streamlines evaluation of a company’s cash flow health.
+            - **Fund Managers**: Identifies top-performing companies for diversified portfolios.
+            """)
+
+    if menu != 'Home':
+        st.markdown("<h1 style='font-size: 18px;'>Last Data Refresh</h1>", unsafe_allow_html=True)
+        # st.markdown("<h1 style='text-align: center;'>About Us</h1>", unsafe_allow_html=True)
+        st.write(last_timestamp.split('_')[0]+'<br>'+last_timestamp.split('_')[1].replace('-',':'), unsafe_allow_html=True)
