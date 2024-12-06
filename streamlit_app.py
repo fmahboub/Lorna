@@ -167,7 +167,7 @@ if st.session_state.landing_page:
 if not st.session_state.landing_page:
 
     # Create two columns: one for the logo, one for the radio buttons
-    col1, col2 = st.columns([1, 10])  # Adjust column ratios as needed
+    col1, col2 = st.columns([1, 9])  # Adjust column ratios as needed
 
     with col1:
         st.image('images/Lorna Logo.png', width=110)
