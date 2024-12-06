@@ -117,7 +117,7 @@ if st.session_state.landing_page:
         <div class="centered">
             <h3 style="text-align: center; color: orange;">Find Stock Ideas With Ease</h3>
             <h2 style="text-align: center; color: white; font-size: 300%;">Cash Flow Momentum Score</h2>
-            <div style="text-align: center; color: lightgray; font-size: 120%;">Focus of genuine cashflow earnings performance</div>
+            <div style="text-align: center; color: lightgray; font-size: 120%;">Focus of genuine cash flow earnings performance</div>
         </div>
         """, 
         unsafe_allow_html=True
