@@ -164,6 +164,9 @@ if st.session_state.landing_page:
     # Closing the div to center the button
     st.markdown('</div>', unsafe_allow_html=True)
     
+    # GIF TEST
+    # st.image('https://i.giphy.com/media/v1.Y2lkPTc5MGI3NjExc2VpdTllbDllOG04MHhia3dhd3h2cnlkamJobDZtdXZmODBnN3AzdyZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9cw/VMBcS9qLM2uXK/giphy.gif', width=110) 
+
 if not st.session_state.landing_page:
 
     # Create two columns: one for the logo, one for the radio buttons
