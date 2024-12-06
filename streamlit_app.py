@@ -165,13 +165,17 @@ if st.session_state.landing_page:
     st.markdown('</div>', unsafe_allow_html=True)
     
 if not st.session_state.landing_page:
-    # CREATE A NAVIGATION MENU AT THE TOP
-    menu = st.radio("Navigate to:",
-        ("Compare", "Rankings","Terminology", "About"),
-        horizontal=True)  # This makes the radio buttons horizontal
-    # DISPLAY THE LOGO
-    st.image('images/Lorna Logo.png',width=120)
 
+    # Create two columns: one for the logo, one for the radio buttons
+    col1, col2 = st.columns([1, 10])  # Adjust column ratios as needed
+
+    with col1:
+        st.image('images/Lorna Logo.png', width=110)
+
+    with col2:
+        menu = st.radio("Navigate to:",
+                        ("Compare", "Rankings", "Terminology", "About"),
+                        horizontal=True)
     # DISPLAY DIFFERENT PAGES BASED ON SELECTION
     if menu == "Compare":
         st.write(
