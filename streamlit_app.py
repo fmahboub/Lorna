@@ -99,6 +99,7 @@ for table_name in comp_table_names:
 
 # APP CODE ------------------------------------------------------------------------------------
 st.set_page_config(layout="wide")
+
 if 'landing_page' not in st.session_state:
     st.session_state.landing_page = True
 
@@ -156,7 +157,7 @@ if st.session_state.landing_page:
     # Centering the button by using a div class and making it a part of the layout
     st.markdown('<div class="centered-button">', unsafe_allow_html=True)
 
-    if st.button("▶️ Try it out"):
+    if st.button("&#9654; Try it out"):
         st.session_state.landing_page = False
         st.rerun()   
 
