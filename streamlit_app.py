@@ -116,7 +116,7 @@ if st.session_state.landing_page:
         </style>
         <div class="centered">
             <h3 style="text-align: center; color: orange;">Find Stock Ideas With Ease</h3>
-            <h2 style="text-align: center; color: white; font-size: 300%;">Cash Flow Momentum Score</h2>
+            <h2 style="text-align: center; color: white; font-size: 400%;">Cash Flow Momentum Score</h2>
             <div style="text-align: center; color: lightgray; font-size: 120%;">Focus of genuine cash flow earnings performance</div>
         </div>
         """, 
@@ -157,7 +157,7 @@ if st.session_state.landing_page:
     # Centering the button by using a div class and making it a part of the layout
     st.markdown('<div class="centered-button">', unsafe_allow_html=True)
 
-    if st.button("Try it out"):
+    if st.button("▶️ Try it out"):
         st.session_state.landing_page = False
         st.rerun()   
 
