@@ -103,25 +103,24 @@ if 'landing_page' not in st.session_state:
     st.session_state.landing_page = True
 
 if st.session_state.landing_page:
-    # Header centered and styled
-    st.markdown(
-        """
-        <style>
-            .centered {
-                display: flex;
-                flex-direction: column;
-                justify-content: center;
-                align-items: center;
-            }
-        </style>
-        <div class="centered">
-            <h3 style="text-align: center; color: orange;">Find Stock Ideas With Ease</h3>
-            <h2 style="text-align: center; color: white; font-size: 400%;">Cash Flow Momentum Score</h2>
-            <div style="text-align: center; color: lightgray; font-size: 120%;">Focus of genuine cash flow earnings performance</div>
-        </div>
-        """, 
-        unsafe_allow_html=True
-    )
+    # HEADER CENTERED AND STYLED TO ADAPT TO THEME
+    st.markdown("""
+    <style>
+    /* Explicit selectors for theme detection */
+    .stApp[data-theme='light'] .theme-subheader {
+        color: black !important;
+    }
+    .stApp[data-theme='dark'] .theme-subheader {
+        color: white !important;
+    }
+    </style>
+    <div class="centered">
+        <h3 style="text-align: center; color: darkorange;">Find Stock Ideas With Ease</h3>
+        <h2 class="theme-subheader" style="text-align: center; font-size: 400%;">Cash Flow Momentum Score</h2>
+        <div style="text-align: center; color: gray; font-size: 120%;">Focus of genuine cash flow earnings performance</div>
+    </div>
+    """, 
+    unsafe_allow_html=True)
 
     # BUTTON FORMATTING
     st.markdown("""
