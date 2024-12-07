@@ -107,7 +107,27 @@ if st.session_state.landing_page:
     # PLACE LOGO
     col1, col2, col3 = st.columns([5, 1, 5])
     with col2:
-        st.image('images/Lorna Logo.png', use_container_width='auto')
+        # Display the image with a default width
+        st.image('images/Lorna Logo.png', use_container_width=True)
+        
+        # Add custom CSS for responsiveness
+        st.markdown(
+            """
+            <style>
+                /* Desktop and larger screens */
+                .stImage img {
+                    width: 150px;
+                }
+                /* Adjust for smaller screens (e.g., mobile devices) */
+                @media screen and (max-width: 600px) {
+                    .stImage img {
+                        width: 80%;
+                    }
+                }
+            </style>
+            """, 
+            unsafe_allow_html=True
+        )
         st.markdown("<br>", unsafe_allow_html=True)
     # HEADER CENTERED AND STYLED TO ADAPT TO THEME
     st.markdown("""
