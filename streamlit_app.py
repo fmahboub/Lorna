@@ -107,10 +107,10 @@ if 'landing_page' not in st.session_state:
 
 if st.session_state.landing_page:
     # PLACE LOGO
-    col1, col2, col3 = st.columns([1, 2, 1])
+    col1, col2, col3 = st.columns([4.5, 1, 4.5])  # Adjust widths for centering
     with col2:
-        st.empty()
-        st.image('images/Lorna Logo.png', width=150)
+        # Display the image in the center column
+        st.image('images/Lorna Logo.png', use_container_width=True)
 
     # HEADER CENTERED AND STYLED TO ADAPT TO THEME
     st.markdown("""
