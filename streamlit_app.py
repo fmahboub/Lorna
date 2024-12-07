@@ -202,11 +202,11 @@ if not st.session_state.landing_page:
         st.image('images/Lorna Logo.png', width=110)
 
     with col2:
-        menu = st.radio("Navigate to:",
-                        ("Compare", "Screener", "Terminology", "About"),
+        menu = st.radio(" ",
+                        ("Compare Stocks", "Stock Screener", "Terminology", "About"),
                         horizontal=True)
     # DISPLAY DIFFERENT PAGES BASED ON SELECTION
-    if menu == "Compare":
+    if menu == "Compare Stocks":
         st.write(
             "Compare Companies Using Cash Flow Momentum Score (CFMS)"
         )
@@ -301,8 +301,8 @@ if not st.session_state.landing_page:
             line_chart = line_chart.configure_legend(orient='top')
             st.altair_chart(line_chart, use_container_width=True)
 
-    elif menu == "Screener":
-        st.title("Screener")
+    elif menu == "Stock Screener":
+        st.title("Stock Screener")
         col1, col2, col3 = st.columns([1, 1, 1])
         ranking_table = CFMS_df.copy().reset_index(drop=True)
         # SET UP FILTERS FOR RANKING PAGE
