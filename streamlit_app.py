@@ -9,6 +9,7 @@ import json
 import altair as alt
 from lorna_functions import *
 from lorna_text_objects import *
+import base64
 
 
 # DATA LOADING SAVING AND PRE-PROCESSING CODE --------------------------------------------------------------------
@@ -106,11 +107,9 @@ if 'landing_page' not in st.session_state:
 
 if st.session_state.landing_page:
     # PLACE LOGO
-    col1, col2, col3 = st.columns([4, 1, 4])
-    with col2:
-        # Display the image with a default width
-        st.image('images/Lorna Logo.png', width=150)
-        st.markdown("<br>", unsafe_allow_html=True)
+    st.markdown("<div style='text-align: center; width: 100%;'><img src='data:image/png;base64,{}' width='150'></div>".format(base64.b64encode(open('images/Lorna Logo.png', 'rb').read()).decode("utf-8")), unsafe_allow_html=True)
+    st.markdown("<br>", unsafe_allow_html=True)
+
     # HEADER CENTERED AND STYLED TO ADAPT TO THEME
     st.markdown("""
     <style>
