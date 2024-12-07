@@ -107,7 +107,7 @@ if 'landing_page' not in st.session_state:
 
 if st.session_state.landing_page:
     # PLACE LOGO
-    col1, col2, col3 = st.columns([4.5, 1, 4.5])  # Adjust widths for centering
+    col1, col2, col3 = st.columns([4, 1, 4])  # Adjust widths for centering
     with col2:
         # Display the image in the center column
         st.image('images/Lorna Logo.png', use_container_width=True)
