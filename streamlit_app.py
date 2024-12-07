@@ -107,8 +107,9 @@ if 'landing_page' not in st.session_state:
 
 if st.session_state.landing_page:
     # PLACE LOGO
-    st.markdown("<div style='text-align: center; width: 100%;'><img src='data:image/png;base64,{}' width='150'></div>".format(base64.b64encode(open('images/Lorna Logo.png', 'rb').read()).decode("utf-8")), unsafe_allow_html=True)
-    st.markdown("<br>", unsafe_allow_html=True)
+    col1, col2, col3 = st.columns([1, 0.25, 1])
+    with col2:
+        st.image('images/Lorna Logo.png', width=150)
 
     # HEADER CENTERED AND STYLED TO ADAPT TO THEME
     st.markdown("""
