@@ -107,8 +107,9 @@ if 'landing_page' not in st.session_state:
 
 if st.session_state.landing_page:
     # PLACE LOGO
-    col1, col2, col3 = st.columns([1, 0.25, 1])
+    col1, col2, col3 = st.columns([1, 2, 1])
     with col2:
+        st.empty()
         st.image('images/Lorna Logo.png', width=150)
 
     # HEADER CENTERED AND STYLED TO ADAPT TO THEME
@@ -398,9 +399,9 @@ if not st.session_state.landing_page:
     if menu != 'Home':
         # DISPLAY LATEST DATA REFRESH
         st.markdown(
-            f"<span style='font-size: 14px; font-weight: bold;'>Last Data Refresh: </span> <span style='font-size: 14px;'>{last_timestamp.split('_')[0].replace('-', '/')} {last_timestamp.split('_')[1].replace('-', ':')}</span>", 
-            unsafe_allow_html=True
-        )
+        f"<span style='font-size: 14px; font-weight: bold;'>Last Data Refresh: </span> "
+        f"<span style='font-size: 14px;'>{last_timestamp.split('_')[0].replace('-', '/')} "
+        f"@ {last_timestamp.split('_')[1].replace('-', ':')}</span>", unsafe_allow_html=True)
         # DISPLAY LEGAL DISCLAIMER
         st.markdown("<h2 style='font-size: 13px;'>Legal Disclaimer</h2>", unsafe_allow_html=True)
         st.markdown('''<p style='font-size:11px;'>
