@@ -202,7 +202,7 @@ if not st.session_state.landing_page:
 
     with col2:
         menu = st.radio("Navigate to:",
-                        ("Compare", "Rankings", "Terminology", "About"),
+                        ("Compare", "Screener", "Terminology", "About"),
                         horizontal=True)
     # DISPLAY DIFFERENT PAGES BASED ON SELECTION
     if menu == "Compare":
@@ -300,9 +300,9 @@ if not st.session_state.landing_page:
             line_chart = line_chart.configure_legend(orient='top')
             st.altair_chart(line_chart, use_container_width=True)
 
-    elif menu == "Rankings":
-        st.title("Rankings")
-        col1, col2 = st.columns(2)
+    elif menu == "Screener":
+        st.title("Screener")
+        col1, col2, col3 = st.columns([1, 1, 1])
         ranking_table = CFMS_df.copy().reset_index(drop=True)
         # SET UP FILTERS FOR RANKING PAGE
         sector_filter_options =  ['All'] + list(CFMS_df['Sector'].unique()) 
@@ -315,6 +315,11 @@ if not st.session_state.landing_page:
             industry_filter = st.selectbox('Select Industry:', options=industry_filter_options, index=0)
         if industry_filter != 'All':
             ranking_table = ranking_table.copy().loc[ranking_table.Industry==industry_filter].reset_index(drop=True)
+        rating_filter_options =  ['All'] + list(ranking_table.dropna()['Cash Flow Investor Rating'].unique()) 
+        with col3:
+            rating_filter = st.selectbox('Select Investor Rating:', options=rating_filter_options, index=0)
+        if rating_filter != 'All':
+            ranking_table = ranking_table.copy().loc[ranking_table['Cash Flow Investor Rating']==rating_filter].reset_index(drop=True)
         # REMOVE THE COLUMNS FOR EACH YEAR CFMS
         ranking_table = ranking_table.loc[:,:main_table_display_columns[-1]]
         ranking_table.insert(1,'Stock Symbol',ranking_table.pop('Stock Symbol'))
