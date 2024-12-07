@@ -8,6 +8,7 @@ import pytz
 import json
 import altair as alt
 from lorna_functions import *
+from lorna_text_objects import *
 
 
 # DATA LOADING SAVING AND PRE-PROCESSING CODE --------------------------------------------------------------------
@@ -170,6 +171,18 @@ if st.session_state.landing_page:
     # Closing the div to center the button
     st.markdown('</div>', unsafe_allow_html=True)
     
+    # LANDING PAGE INFO MENU
+    # Create columns for layout with the middle column being wider
+    col1, col2, col3 = st.columns([1, 1.5, 1])
+    
+    with col2:
+        # Align the radio horizontally in the middle
+        options = ["Why Lorna?", "CFMS Explained", "Methodology", "Time Periods"]
+        selected_option = st.selectbox("", options)
+        # Using HTML to center the header
+        st.markdown(f"<h1 style='text-align: center;'>{selected_option}</h1>", unsafe_allow_html=True)
+        # st.write(landing_content_dict[selected_option])
+        st.markdown(landing_content_dict[selected_option], unsafe_allow_html=True)
 
     # GIF TEST
     # col1, col2, col3 = st.columns([0.25, 1, 0.25])
@@ -314,47 +327,6 @@ if not st.session_state.landing_page:
         # Define sections of terminology
         st.header("Metrics")
         # st.subheader("Definition, Rationale, and Description")
-
-        # Combined metrics data, merging Normalized Scores
-        metrics_data = [
-            {
-                "Metric":"Cash Flow Momentum Score (CFMS)",
-                "Definition": "A score that measures how well a company generates, grows, and uses its cash.",
-                "Rationale": "Simplifies financial data into an easy-to-understand score, helping investors pick strong companies.",
-                "Description": "Evaluates companies using five key metrics. Normalized scores range from 1-100, with higher scores indicating better cash flow health."
-
-            },
-            {
-                "Metric": "Cash Flow Efficiency (CFE)",
-                "Definition": "Measures the proportion of net income that is converted into cash from operating activities.",
-                "Rationale": "A ratio above 1 indicates high earnings quality, suggesting that net income is backed by actual cash flow.",
-                "Description": "Reflects the quality of earnings by showing how well net income translates into real cash flow. Normalized scores range from 1-100, with higher scores indicating better earnings quality."
-            },
-            {
-                "Metric": "EBITDA Margin",
-                "Definition": "The ratio of Earnings Before Interest, Taxes, Depreciation, and Amortization (EBITDA) to revenue.",
-                "Rationale": "Evaluates core profitability and operational efficiency, focusing on a company's ability to generate cash from its operations.",
-                "Description": "Indicates how efficiently a company generates profit from its core operations. Normalized scores range from 1-100, with higher scores reflecting stronger EBITDA margins."
-            },
-            {
-                "Metric": "Operating Cash Flow Growth (OCFG)",
-                "Definition": "The year-over-year growth rate of operating cash flow.",
-                "Rationale": "Sustained growth in OCF indicates that a company is successfully expanding its business and generating more cash from core operations.",
-                "Description": "Highlights the company's ability to grow its cash generation over time. Normalized scores range from 1-100, with higher scores showing robust and sustained growth."
-            },
-            {
-                "Metric": "Free Cash Flow Yield (FCF Yield)",
-                "Definition": "The ratio of free cash flow to market capitalization.",
-                "Rationale": "Reflects how much cash a company is generating relative to its stock price, serving as an indicator of valuation and shareholder returns.",
-                "Description": "Helps investors assess the stock's value relative to its cash-generating capacity. Normalized scores range from 1-100, with higher scores indicating better valuation efficiency."
-            },
-            {
-                "Metric": "Return on Invested Capital (ROIC)",
-                "Definition": "Measures how efficiently a company generates profits relative to the capital it has invested in its business.",
-                "Rationale": "A high ROIC indicates efficient use of capital, suggesting strong value creation for shareholders.",
-                "Description": "Shows how well a company uses its resources to create value. Normalized scores range from 1-100, with higher scores reflecting more efficient capital use."
-            }
-        ]
 
         # Display metrics with headers and formatting
         for metric in metrics_data:
