@@ -238,9 +238,9 @@ if not st.session_state.landing_page:
             st.markdown(table_style, unsafe_allow_html=True)
             # DISPLAY MAIN TABLE
             st.table(temp_table)
-            st.markdown('<style>div[data-testid="stRadio"] > label > div { font-size: 20px; }</style>', unsafe_allow_html=True)
+            st.markdown('<style>div[data-testid="stRadio"] > label > div { font-size: 18px; }</style>', unsafe_allow_html=True)
             # CREATE A BAR CHART FROM THE 'VALUES' COLUMN
-            chart_option = st.radio("Choose metric to display:",('Trailing Twelve Months (TTM) CFMS', 'Year-to-Date (YTD) CFMS', 'Latest Reported Quarter CFMS',),horizontal =True)
+            chart_option = st.radio("Select Display Metric:",('Trailing Twelve Months (TTM) CFMS', 'Year-to-Date (YTD) CFMS', 'Latest Reported Quarter CFMS',),horizontal =True)
             # CREATE BAR CHART WITH CUSTOM Y-AXIS RANGE
                 # FIND COLS WITH NULL VALUES AND DEPENDING ON THE SELECTION FROM chart_option REMOVE ANY ROW WITH NULLS
             temp_table_null_cols = temp_table.columns[temp_table.isnull().any()].tolist()
