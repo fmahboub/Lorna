@@ -238,6 +238,7 @@ if not st.session_state.landing_page:
             st.markdown(table_style, unsafe_allow_html=True)
             # DISPLAY MAIN TABLE
             st.table(temp_table)
+            st.markdown('<style>div[data-testid="stRadio"] > label > div { font-size: 20px; }</style>', unsafe_allow_html=True)
             # CREATE A BAR CHART FROM THE 'VALUES' COLUMN
             chart_option = st.radio("Choose metric to display:",('Trailing Twelve Months (TTM) CFMS', 'Year-to-Date (YTD) CFMS', 'Latest Reported Quarter CFMS',),horizontal =True)
             # CREATE BAR CHART WITH CUSTOM Y-AXIS RANGE
@@ -250,6 +251,13 @@ if not st.session_state.landing_page:
             chart = alt.Chart(temp_chart_table).mark_bar().encode(
                 x=alt.X('Company Name',title='Company',axis=alt.Axis(labelAngle=0)),
                 y=alt.Y(chart_option, scale=alt.Scale(domain=[0, max(temp_chart_table[chart_option])+5]), title='CFMS  '+chart_option))
+            # Custom CSS to center the header and reduce padding
+             # DISPLAY CFMS COMPARE CHART HEADER
+            st.markdown(
+            "<style>.centered-header { text-align: center; margin: 0; padding: 0; } section.main > div:first-child { padding-top: 0; }</style>",
+            unsafe_allow_html=True)
+            st.markdown(f'<h5 class="centered-header">Compare {chart_option}</h5>', unsafe_allow_html=True)
+            # st.header('Compre CFMS')
             st.altair_chart(chart, use_container_width=True)
 
             # CREATE TEMP TABLE OF COMPONENTS FOR DISPLAY
@@ -281,6 +289,8 @@ if not st.session_state.landing_page:
 
             # SET LEGEND ORIENTATION TO TOP
             comp_bar_chart = comp_bar_chart.configure_legend(orient='top', labelLimit=300)
+            # DISPLAY COMPONENT COMPARE CHART HEADER
+            st.markdown(f'<h5 class="centered-header">Compare {chart_option} Coomponents</h5>', unsafe_allow_html=True)
             # DISPLAY THE CHART IN STREAMLIT
             st.altair_chart(comp_bar_chart, use_container_width=True)
 
@@ -297,8 +307,10 @@ if not st.session_state.landing_page:
                     color="Company Name:N",
                     tooltip=["Company Name", "Year", "CFMS"],
                 ).interactive())
-            # DISPLAY THE CHART IN STREAMLIT
+            # DISPLAY TIMELINE CHART IN STREAMLIT
             line_chart = line_chart.configure_legend(orient='top')
+            # DISPLAY TIMELINE CHART HEADER
+            st.markdown(f'<h5 class="centered-header">Compare Annual CFMS Timelines</h5>', unsafe_allow_html=True)
             st.altair_chart(line_chart, use_container_width=True)
 
     elif menu == "Stock Screener":
