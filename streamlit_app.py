@@ -250,7 +250,7 @@ if not st.session_state.landing_page:
                 temp_chart_table = temp_table.copy()
             chart = alt.Chart(temp_chart_table).mark_bar().encode(
                 x=alt.X('Company Name',title='Company',axis=alt.Axis(labelAngle=0)),
-                y=alt.Y(chart_option, scale=alt.Scale(domain=[0, max(temp_chart_table[chart_option])+5]), title='CFMS  '+chart_option))
+                y=alt.Y(chart_option, scale=alt.Scale(domain=[0, max(temp_chart_table[chart_option])+5]), title=chart_option))
             # Custom CSS to center the header and reduce padding
              # DISPLAY CFMS COMPARE CHART HEADER
             st.markdown(
