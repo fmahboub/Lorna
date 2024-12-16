@@ -16,8 +16,9 @@ COPY streamlit_app.py streamlit_app.py
 COPY lorna_functions.py lorna_functions.py
 COPY lorna_text_objects.py lorna_text_objects.py
 
-# Copy the entire /data directory into the image
+# Copy other useful directories into the docker image
 COPY data /app/data
+COPY images /app/images
 
 EXPOSE 8080
 
