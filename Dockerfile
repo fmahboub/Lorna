@@ -13,6 +13,8 @@ COPY requirements.txt requirements.txt
 RUN pip3 install -r requirements.txt
 
 COPY streamlit_app.py streamlit_app.py
+COPY lorna_functions.py lorna_functions.py
+COPY lorna_text_objects.py lorna_text_objects.py
 EXPOSE 8080
 
 HEALTHCHECK CMD curl --fail http://localhost:8080/_stcore/health
