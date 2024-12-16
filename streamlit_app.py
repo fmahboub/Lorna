@@ -100,7 +100,7 @@ for table_name in comp_table_names:
     globals()[table_name][score_columns] = globals()[table_name][score_columns].astype(pd.Int64Dtype())
 
 # APP CODE ------------------------------------------------------------------------------------
-st.set_page_config(layout="wide")
+st.set_page_config(layout="wide", page_title="Lorna")
 
 if 'landing_page' not in st.session_state:
     st.session_state.landing_page = True
