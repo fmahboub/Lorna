@@ -38,23 +38,21 @@ if True:
         project_id = "blissful-flame-442915-s2"
         secret_id = "Lorna_Gservice_Account"
 
-        # Fetch the service account JSON credentials
-        credentials_json = access_secret_version(project_id, secret_id)
-        credentials_dict = json.loads(credentials_json)
-
         # Authenticate using the service account credentials
-        credentials = service_account.Credentials.from_service_account_info(credentials_dict)
+        credentials = access_cred_gc_secret_manager(project_id, secret_id)
         gc = gspread.authorize(credentials)
-    except:
-        # # LOAD SECRETS
-        # credentials_dict = json.loads(st.secrets["google_cloud"]["credentials"])
+    except Exception as e:
+        print(f"Error occurred: {e}...Trying Streamlit Secrets")
+        raise  # Reraise the exception to stop silent failures
+        # LOAD SECRETS
+        credentials_dict = json.loads(st.secrets["google_cloud"]["credentials"])
 
-        # # AUTHENTICATE USING THE CREDENTIALS
-        # scopes = ["https://www.googleapis.com/auth/spreadsheets", "https://www.googleapis.com/auth/drive"]
-        # credentials = Credentials.from_service_account_info(credentials_dict, scopes=scopes)
-        # # CONNECT TO GOOGLE SHEETS
-        # gc = gspread.authorize(credentials)
-        None
+        # AUTHENTICATE USING THE CREDENTIALS
+        scopes = ["https://www.googleapis.com/auth/spreadsheets", "https://www.googleapis.com/auth/drive"]
+        credentials = Credentials.from_service_account_info(credentials_dict, scopes=scopes)
+        # CONNECT TO GOOGLE SHEETS
+        gc = gspread.authorize(credentials)
+
 
     # OPEN THE MAIN SHEET
     CFMS_spreadsheet = gc.open("CashFlow Momentum Score (CFMS)- US & Canada Stocks")
