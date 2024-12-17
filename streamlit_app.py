@@ -1,6 +1,7 @@
 import streamlit as st
 import pandas as pd
 import gspread
+from google.cloud import secretmanager
 from google.oauth2.service_account import Credentials
 import numpy as np
 import datetime
@@ -28,19 +29,32 @@ current_timestamp_date = current_timestamp.split('_')[0]
 current_timestamp_time = current_timestamp.split('_')[1]
 
 # COMPARE DATES OF PREVIOUS AND CURRENT TIMESTAMPS AND CALL API IF THE DATE HAS INCREASED AND IT'S PASSED 12 NOON 
-if current_timestamp_date > last_timestamp_date and int(current_timestamp_time.split('-')[0])>=12:
+# if current_timestamp_date > last_timestamp_date and int(current_timestamp_time.split('-')[0])>=12:
+if True:
     try:
-        # AUTHENTICATE WITH GOOGLE SHEETS
-        gc = gspread.service_account(filename='Google Cloud/blissful-flame-442915-s2-7a643e50638f.json')
-    except:
-        # LOAD SECRETS
-        credentials_dict = json.loads(st.secrets["google_cloud"]["credentials"])
+        # USE GOOGLE.CLOUD.SECRETMANAGER TO GET CREDENTIALS TO ACCESS GOOGLE SHEETS
 
-        # AUTHENTICATE USING THE CREDENTIALS
-        scopes = ["https://www.googleapis.com/auth/spreadsheets", "https://www.googleapis.com/auth/drive"]
-        credentials = Credentials.from_service_account_info(credentials_dict, scopes=scopes)
-        # CONNECT TO GOOGLE SHEETS
+        # FETCH CREDENTIALS FROM SECRET MANAGER
+        project_id = "blissful-flame-442915-s2"
+        secret_id = "Lorna_Gservice_Account"
+
+        # Fetch the service account JSON credentials
+        credentials_json = access_secret_version(project_id, secret_id)
+        credentials_dict = json.loads(credentials_json)
+
+        # Authenticate using the service account credentials
+        credentials = service_account.Credentials.from_service_account_info(credentials_dict)
         gc = gspread.authorize(credentials)
+    except:
+        # # LOAD SECRETS
+        # credentials_dict = json.loads(st.secrets["google_cloud"]["credentials"])
+
+        # # AUTHENTICATE USING THE CREDENTIALS
+        # scopes = ["https://www.googleapis.com/auth/spreadsheets", "https://www.googleapis.com/auth/drive"]
+        # credentials = Credentials.from_service_account_info(credentials_dict, scopes=scopes)
+        # # CONNECT TO GOOGLE SHEETS
+        # gc = gspread.authorize(credentials)
+        None
 
     # OPEN THE MAIN SHEET
     CFMS_spreadsheet = gc.open("CashFlow Momentum Score (CFMS)- US & Canada Stocks")

@@ -2,3 +2,4 @@ streamlit
 gspread
 google
 pytz
+google-cloud-secret-manager
